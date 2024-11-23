@@ -47,6 +47,7 @@ namespace FreemanAPI {
 		return nullptr;
 	}
 
+	// used for footsteps and fall damage (sound path, volume)
 	void Register_PlayGameSound(void(*func)(const char*, float)) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(void(*func)(const char*, float))>("FreemanAPI_Register_PlayGameSound");
 		if (!funcPtr) return;
@@ -95,6 +96,7 @@ namespace FreemanAPI {
 		funcPtr(func);
 	}
 
+	// check for water, slime, lava, etc. at the given position
 	void Register_GetPointContents(int(*func)(const double*)) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(int(*func)(const double*))>("FreemanAPI_Register_GetPointContents");
 		if (!funcPtr) return;
@@ -238,6 +240,18 @@ namespace FreemanAPI {
 		funcPtr(on);
 	}
 
+	bool GetIsHL2Mode() {
+		static auto funcPtr = GetFuncPtr<bool(__cdecl*)()>("FreemanAPI_GetIsHL2Mode");
+		if (!funcPtr) return false;
+		return funcPtr();
+	}
+
+	void SetIsHL2Mode(bool on) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(bool)>("FreemanAPI_SetIsHL2Mode");
+		if (!funcPtr) return;
+		funcPtr(on);
+	}
+
 	// get player mins for use in PM_PlayerTrace
 	double* GetPlayerBBoxMin() {
 		static auto funcPtr = GetFuncPtr<double*(__cdecl*)()>("FreemanAPI_GetPlayerBBoxMin");
@@ -260,12 +274,16 @@ namespace FreemanAPI {
 		return funcPtr(label, configLabel, ptr, category);
 	}
 
+	// 0 - behavior, 1 - cvars, 2 - advanced
+	// add something custom to the chloe menu and the config reader
 	void RegisterCustomInt(const char* label, const char* configLabel, int* ptr, int category) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(const char*, const char*, int*, int)>("FreemanAPI_RegisterCustomInt");
 		if (!funcPtr) return;
 		return funcPtr(label, configLabel, ptr, category);
 	}
 
+	// 0 - behavior, 1 - cvars, 2 - advanced
+	// add something custom to the chloe menu and the config reader
 	void RegisterCustomFloat(const char* label, const char* configLabel, float* ptr, int category) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(const char*, const char*, float*, int)>("FreemanAPI_RegisterCustomFloat");
 		if (!funcPtr) return;
@@ -310,6 +328,42 @@ namespace FreemanAPI {
 
 	float* GetConfigFloat(const char* label) {
 		static auto funcPtr = GetFuncPtr<float*(__cdecl*)(const char*)>("FreemanAPI_GetConfigFloat");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
+	}
+
+	bool* GetConfigBooleanHL1(const char* label) {
+		static auto funcPtr = GetFuncPtr<bool*(__cdecl*)(const char*)>("FreemanAPI_GetConfigBooleanHL1");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
+	}
+
+	int* GetConfigIntHL1(const char* label) {
+		static auto funcPtr = GetFuncPtr<int*(__cdecl*)(const char*)>("FreemanAPI_GetConfigIntHL1");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
+	}
+
+	float* GetConfigFloatHL1(const char* label) {
+		static auto funcPtr = GetFuncPtr<float*(__cdecl*)(const char*)>("FreemanAPI_GetConfigFloatHL1");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
+	}
+
+	bool* GetConfigBooleanHL2(const char* label) {
+		static auto funcPtr = GetFuncPtr<bool*(__cdecl*)(const char*)>("FreemanAPI_GetConfigBooleanHL2");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
+	}
+
+	int* GetConfigIntHL2(const char* label) {
+		static auto funcPtr = GetFuncPtr<int*(__cdecl*)(const char*)>("FreemanAPI_GetConfigIntHL2");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
+	}
+
+	float* GetConfigFloatHL2(const char* label) {
+		static auto funcPtr = GetFuncPtr<float*(__cdecl*)(const char*)>("FreemanAPI_GetConfigFloatHL2");
 		if (!funcPtr) return nullptr;
 		return funcPtr(label);
 	}

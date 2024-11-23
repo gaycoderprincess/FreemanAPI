@@ -74,7 +74,8 @@ namespace FreemanAPI {
 		}
 	};
 	std::vector<tConfigValue> aBehaviorConfig;
-	std::vector<tConfigValue> aCVarConfig;
+	std::vector<tConfigValue> aCVarConfigHL1;
+	std::vector<tConfigValue> aCVarConfigHL2;
 	std::vector<tConfigValue> aAdvancedConfig;
 
 	// ingame variable config
@@ -86,6 +87,7 @@ namespace FreemanAPI {
 	bool bBhopCap = false;
 	bool bSmartVelocityCap = false;
 	bool bNoclipKey = false;
+	bool bHL2Mode = true;
 
 	// game integration config
 	bool bConvertUnits = true; // do conversions from units to meters when handling game funcs

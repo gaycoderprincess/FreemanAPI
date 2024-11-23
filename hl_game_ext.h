@@ -72,10 +72,27 @@ namespace FreemanAPI {
 		for (auto& config : aCustomAdvancedConfig) {
 			if (config.name == label) return &config;
 		}
-		for (auto& config : aCVarConfig) {
+		for (auto& config : aCVarConfigHL1) {
+			if (config.name == label) return &config;
+		}
+		for (auto& config : aCVarConfigHL2) {
 			if (config.name == label) return &config;
 		}
 		for (auto& config : aCustomCVarConfig) {
+			if (config.name == label) return &config;
+		}
+		return nullptr;
+	}
+	tConfigValue* FindConfigValueHL1(const char* label) {
+		if (!label) return nullptr;
+		for (auto& config : aCVarConfigHL1) {
+			if (config.name == label) return &config;
+		}
+		return nullptr;
+	}
+	tConfigValue* FindConfigValueHL2(const char* label) {
+		if (!label) return nullptr;
+		for (auto& config : aCVarConfigHL2) {
 			if (config.name == label) return &config;
 		}
 		return nullptr;

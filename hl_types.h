@@ -84,7 +84,7 @@ namespace FreemanAPI {
 		// For ducking/dead
 		NyaVec3Double view_ofs;				// Our eye position.
 		float flDuckTime;					// Time we started duck
-		bool bInDuck;						// In process of ducking or ducked already?
+		bool bInDuckHL1;					// In process of ducking or ducked already?
 
 		// For walking/falling
 		int	flTimeStepSound;				// Next time we can play a step sound
@@ -118,5 +118,21 @@ namespace FreemanAPI {
 
 		NyaVec3Double player_mins[4];
 		NyaVec3Double player_maxs[4];
+
+		// hl2 vars
+		// Fully ducked
+		bool m_bDucked = false;
+		// In process of ducking
+		bool m_bDucking = false;
+		// In process of duck-jumping
+		bool m_bInDuckJump = false;
+		// During ducking process, amount of time before full duc
+		float m_flDuckJumpTime = 0;
+		// Jump time, time to auto unduck (since we auto crouch jump now).
+		float m_flJumpTime = 0;
+		int m_iSpeedCropped = 0;
+		bool m_bIsSprinting = false;
+		bool m_bAllowAutoMovement = true;
+		NyaVec3Double m_vecPunchAngleVel = {0,0,0};
 	} *pmove = new playermove_s;
 }

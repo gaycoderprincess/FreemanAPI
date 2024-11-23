@@ -6,8 +6,62 @@
 #include "hl_game_ext.h"
 
 namespace FreemanAPI {
+	// HL2 helper funcs
+	bool IsDead() {
+		return pmove->dead;
+	}
+
+	void* GetGroundEntity() {
+		if (pmove->onground != -1) return (void*)1;
+		return nullptr;
+	}
+
+	auto VEC_VIEW() {
+		return bHL2Mode ? VEC_VIEW_HL2 : VEC_VIEW_HL1;
+	}
+	auto VEC_DUCK_VIEW() {
+		return bHL2Mode ? VEC_DUCK_VIEW_HL2 : VEC_DUCK_VIEW_HL1;
+	}
+
+	NyaVec3Double VEC_HULL_MIN_SCALED() {
+		return pmove->player_mins[0];
+	}
+
+	NyaVec3Double VEC_HULL_MAX_SCALED() {
+		return pmove->player_maxs[0];
+	}
+
+	NyaVec3Double VEC_DUCK_HULL_MIN_SCALED() {
+		return pmove->player_mins[1];
+	}
+
+	NyaVec3Double VEC_DUCK_HULL_MAX_SCALED() {
+		return pmove->player_maxs[1];
+	}
+
+	void AddFlag(int flag) {
+		pmove->flags = pmove->flags | flag;
+	}
+
+	void RemoveFlag(int flag) {
+		pmove->flags = pmove->flags & ~flag;
+	}
+
+	NyaVec3Double GetPlayerMins(bool ducked) {
+		return pmove->player_mins[ducked ? 1 : 0];
+	}
+	NyaVec3Double GetPlayerMaxs(bool ducked) {
+		return pmove->player_maxs[ducked ? 1 : 0];
+	}
+	NyaVec3Double GetPlayerViewOffset(bool ducked) {
+		NyaVec3Double out;
+		out[UP] = ducked ? VEC_DUCK_VIEW() : VEC_VIEW();
+		return out;
+	}
+
 	int nDefaultMoveType = MOVETYPE_WALK;
 
+	// export func helpers
 	pmtrace_t PointRaytrace(NyaVec3Double origin, NyaVec3Double end) {
 		if (bConvertUnits) {
 			for (int i = 0; i < 3; i++) {
@@ -77,6 +131,22 @@ namespace FreemanAPI {
 			{  32,  32,  32 },
 	};
 
+	// default hullmins
+	static const NyaVec3Double pm_hullmins_hl2[4] = {
+			{ -16, -16, 0 },
+			{ -16, -16, 0 },
+			{   0,   0,   0 },
+			{ -32, -32, 0 },
+	};
+
+	// defualt hullmaxs
+	static const NyaVec3Double pm_hullmaxs_hl2[4] = {
+			{  16,  16,  72 }, // stand
+			{  16,  16,  36 }, // duck
+			{   0,   0,   0 }, // point
+			{  32,  32,  64 },
+	};
+
 	void PM_DropPunchAngle(NyaVec3Double& punchangle) {
 		auto len = VectorNormalize(punchangle);
 		len -= (10.0 + len * 0.5) * pmove->frametime;
@@ -84,9 +154,67 @@ namespace FreemanAPI {
 		VectorScale(punchangle, len, punchangle);
 	}
 
-	void PM_PlayWaterSounds() {
-		// Did we enter or leave water?
-		if ((pmove->oldwaterlevel == 0 && pmove->waterlevel != 0) || (pmove->oldwaterlevel != 0 && pmove->waterlevel == 0)) {
+	void DecayPunchAngle() {
+		if (pmove->punchangle.LengthSqr() > 0.001 || pmove->punchangle.LengthSqr() > 0.001) {
+			pmove->punchangle += pmove->m_vecPunchAngleVel * pmove->frametime;
+			float damping = 1 - (PUNCH_DAMPING * pmove->frametime);
+
+			if (damping < 0) {
+				damping = 0;
+			}
+			pmove->m_vecPunchAngleVel *= damping;
+
+			// torsional spring
+			// UNDONE: Per-axis spring constant?
+			float springForceMagnitude = PUNCH_SPRING_CONSTANT * pmove->frametime;
+			if (springForceMagnitude < 0.f) springForceMagnitude = 0.f;
+			if (springForceMagnitude > 2.f) springForceMagnitude = 2.f;
+			pmove->m_vecPunchAngleVel -= pmove->punchangle * springForceMagnitude;
+
+			// don't wrap around
+			if (pmove->punchangle[PITCH] < -89.f) pmove->punchangle[PITCH] = -89.f;
+			if (pmove->punchangle[YAW] < -179.f) pmove->punchangle[YAW] = -179.f;
+			if (pmove->punchangle[ROLL] < -89.f) pmove->punchangle[ROLL] = -89.f;
+			if (pmove->punchangle[PITCH] > 89.f) pmove->punchangle[PITCH] = 89.f;
+			if (pmove->punchangle[YAW] > 179.f) pmove->punchangle[YAW] = 179.f;
+			if (pmove->punchangle[ROLL] > 89.f) pmove->punchangle[ROLL] = 89.f;
+		}
+		else {
+			pmove->punchangle = { 0, 0, 0 };
+			pmove->m_vecPunchAngleVel = { 0, 0, 0 };
+		}
+	}
+
+	void PlaySwimSound() {
+		if (bHL2Mode) {
+			switch (rand() % 8) {
+				case 0:
+					PlayGameSound("player/footsteps/wade1.wav", 1);
+					break;
+				case 1:
+					PlayGameSound("player/footsteps/wade2.wav", 1);
+					break;
+				case 2:
+					PlayGameSound("player/footsteps/wade3.wav", 1);
+					break;
+				case 3:
+					PlayGameSound("player/footsteps/wade4.wav", 1);
+					break;
+				case 4:
+					PlayGameSound("player/footsteps/wade5.wav", 1);
+					break;
+				case 5:
+					PlayGameSound("player/footsteps/wade6.wav", 1);
+					break;
+				case 6:
+					PlayGameSound("player/footsteps/wade7.wav", 1);
+					break;
+				case 7:
+					PlayGameSound("player/footsteps/wade8.wav", 1);
+					break;
+			}
+		}
+		else {
 			switch (rand() % 4) {
 				case 0:
 					PlayGameSound("player/pl_wade1.wav", 1);
@@ -101,6 +229,13 @@ namespace FreemanAPI {
 					PlayGameSound("player/pl_wade4.wav", 1);
 					break;
 			}
+		}
+	}
+
+	void PM_PlayWaterSounds() {
+		// Did we enter or leave water?
+		if ((pmove->oldwaterlevel == 0 && pmove->waterlevel != 0) || (pmove->oldwaterlevel != 0 && pmove->waterlevel == 0)) {
+			PlaySwimSound();
 		}
 	}
 
@@ -128,6 +263,10 @@ namespace FreemanAPI {
 	}
 
 	float V_CalcBob() {
+		auto cl_bobcycle = bHL2Mode ? CVar_HL2::cl_bobcycle : CVar_HL1::cl_bobcycle;
+		auto cl_bobup = bHL2Mode ? CVar_HL2::cl_bobup : CVar_HL1::cl_bobup;
+		auto cl_bob = bHL2Mode ? CVar_HL2::cl_bob : CVar_HL1::cl_bob;
+
 		static double bobtime;
 		static float bob;
 		float cycle;
@@ -197,7 +336,12 @@ namespace FreemanAPI {
 			pmove->cmd.forwardmove = pmove->cmd.sidemove = pmove->cmd.upmove = 0;
 		}
 
-		PM_DropPunchAngle(pmove->punchangle);
+		if (bHL2Mode) {
+			DecayPunchAngle();
+		}
+		else {
+			PM_DropPunchAngle(pmove->punchangle);
+		}
 
 		// Take angles from command.
 		if (!pmove->dead) {
@@ -247,6 +391,20 @@ namespace FreemanAPI {
 			}
 		}
 
+		if (pmove->m_flDuckJumpTime > 0) {
+			pmove->m_flDuckJumpTime -= pmove->cmd.msec;
+			if (pmove->m_flDuckJumpTime < 0) {
+				pmove->m_flDuckJumpTime = 0;
+			}
+		}
+
+		if (pmove->m_flJumpTime > 0) {
+			pmove->m_flJumpTime -= pmove->cmd.msec;
+			if (pmove->m_flJumpTime < 0) {
+				pmove->m_flJumpTime = 0;
+			}
+		}
+
 		if (pmove->flSwimTime > 0) {
 			pmove->flSwimTime -= pmove->cmd.msec;
 			if (pmove->flSwimTime < 0) {
@@ -258,16 +416,37 @@ namespace FreemanAPI {
 	int nPhysicsSteps = 4;
 	int nColDensity = 2;
 
+	// get avg between min and max up, should end up 0 for HL1
+	float GetPlayerCenterUp() {
+		auto min = pmove->player_mins[pmove->usehull];
+		auto max = pmove->player_maxs[pmove->usehull];
+		return (min[UP] + max[UP]) * 0.5;
+	}
+
+	NyaVec3Double GetCenterRelativeBBoxMin() {
+		auto v = pmove->player_mins[pmove->usehull];
+		v[UP] -= GetPlayerCenterUp();
+		return v;
+	}
+
+	NyaVec3Double GetCenterRelativeBBoxMax() {
+		auto v = pmove->player_maxs[pmove->usehull];
+		v[UP] -= GetPlayerCenterUp();
+		return v;
+	}
+
 	// for ground movement
 	pmtrace_t GetTopFloorForBBox(NyaVec3Double origin) {
 		std::vector<pmtrace_t> traces;
+
+		origin[UP] += GetPlayerCenterUp();
 
 		for (int x = -nColDensity; x <= nColDensity; x++) {
 			auto posX = (double)x / nColDensity;
 			for (int z = -nColDensity; z <= nColDensity; z++) {
 				auto posZ = (double)z / nColDensity;
 
-				auto bbox = pmove->player_maxs[pmove->usehull];
+				auto bbox = GetCenterRelativeBBoxMax();
 
 				// do a raycast from all sides downwards
 
@@ -291,6 +470,7 @@ namespace FreemanAPI {
 		for (auto& tr : traces) {
 			if (tr.ent != -1 && tr.endpos[UP] > out.endpos[UP]) out = tr;
 		}
+		out.endpos[UP] -= GetPlayerCenterUp();
 		return out;
 	}
 
@@ -298,12 +478,14 @@ namespace FreemanAPI {
 	pmtrace_t GetBottomCeilingForBBox(NyaVec3Double origin) {
 		std::vector<pmtrace_t> traces;
 
+		origin[UP] += GetPlayerCenterUp();
+
 		for (int x = -nColDensity; x <= nColDensity; x++) {
 			auto posX = (double)x / nColDensity;
 			for (int z = -nColDensity; z <= nColDensity; z++) {
 				auto posZ = (double)z / nColDensity;
 
-				auto bbox = pmove->player_maxs[pmove->usehull];
+				auto bbox = GetCenterRelativeBBoxMax();
 
 				// do a raycast from all sides upwards
 
@@ -330,6 +512,7 @@ namespace FreemanAPI {
 		for (auto& tr : traces) {
 			if (tr.ent != -1 && tr.endpos[UP] < out.endpos[UP]) out = tr;
 		}
+		out.endpos[UP] -= GetPlayerCenterUp();
 		return out;
 	}
 
@@ -337,6 +520,9 @@ namespace FreemanAPI {
 	// returns the center as endpoint
 	pmtrace_t GetClosestBBoxIntersection(NyaVec3Double origPos, NyaVec3Double targetPos) {
 		auto distanceTraveled = (origPos - targetPos).length();
+
+		origPos[UP] += GetPlayerCenterUp();
+		targetPos[UP] += GetPlayerCenterUp();
 
 		std::vector<pmtrace_t> traces;
 
@@ -347,7 +533,7 @@ namespace FreemanAPI {
 				for (int z = -nColDensity; z <= nColDensity; z++) {
 					auto posZ = (double)z / nColDensity;
 
-					auto bbox = pmove->player_maxs[pmove->usehull];
+					auto bbox = GetCenterRelativeBBoxMax();
 
 					// cast from the origin outwards
 					auto start = targetPos;
@@ -374,6 +560,7 @@ namespace FreemanAPI {
 		for (auto& tr : traces) {
 			if (tr.ent != -1 && tr.fraction < out.fraction) out = tr;
 		}
+		out.endpos[UP] -= GetPlayerCenterUp();
 		return out;
 	}
 
@@ -460,7 +647,8 @@ namespace FreemanAPI {
 		point[FORWARD] = pmove->origin[FORWARD];
 		point[UP] = pmove->origin[UP] - 2;
 
-		if (pmove->velocity[UP] > 180 || pmove->movetype == MOVETYPE_NOCLIP) { // Shooting up really fast.  Definitely not on ground.
+		float maxUpVelocity = bHL2Mode ? NON_JUMP_VELOCITY : 180;
+		if (pmove->velocity[UP] > maxUpVelocity || pmove->movetype == MOVETYPE_NOCLIP) { // Shooting up really fast.  Definitely not on ground.
 			pmove->onground = -1;
 		} else {
 			// Try and move down.
@@ -518,113 +706,275 @@ namespace FreemanAPI {
 
 		// irand - 0,1 for right foot, 2,3 for left foot
 		// used to alternate left and right foot
-
-		switch (step) {
-			default:
-			case CHAR_TEX_CONCRETE:
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_step1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_step3.wav", fvol); break;
-					// left foot
-					case 2:	PlayGameSound("player/pl_step2.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_step4.wav", fvol); break;
-				}
-				break;
-			case CHAR_TEX_METAL:
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_metal1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_metal3.wav", fvol); break;
-					// left foot
-					case 2:	PlayGameSound("player/pl_metal2.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_metal4.wav", fvol); break;
-				}
-				break;
-			case CHAR_TEX_DIRT:
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_dirt1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_dirt3.wav", fvol); break;
-					// left foot
-					case 2:	PlayGameSound("player/pl_dirt2.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_dirt4.wav", fvol); break;
-				}
-				break;
-			case CHAR_TEX_VENT:
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_duct1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_duct3.wav", fvol); break;
-					// left foot
-					case 2:	PlayGameSound("player/pl_duct2.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_duct4.wav", fvol); break;
-				}
-				break;
-			case CHAR_TEX_GRATE:
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_grate1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_grate3.wav", fvol); break;
-					// left foot
-					case 2:	PlayGameSound("player/pl_grate2.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_grate4.wav", fvol); break;
-				}
-				break;
-			case CHAR_TEX_TILE:
-				if (!(rand() % 5)) {
-					irand = 4;
-				}
-
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_tile1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_tile3.wav", fvol); break;
-					// left foot
-					case 2:	PlayGameSound("player/pl_tile2.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_tile4.wav", fvol); break;
-					case 4: PlayGameSound("player/pl_tile5.wav", fvol); break;
-				}
-				break;
-			case CHAR_TEX_SLOSH:
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_slosh1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_slosh3.wav", fvol); break;
+		if (bHL2Mode) {
+			switch (step) {
+				default:
+				case CHAR_TEX_CONCRETE:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/concrete1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/concrete3.wav", fvol); break;
 						// left foot
-					case 2:	PlayGameSound("player/pl_slosh2.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_slosh4.wav", fvol); break;
-				}
-				break;
-			case CHAR_TEX_WADE:
-				if (iSkipStep == 0) {
-					iSkipStep++;
+						case 2:	PlayGameSound("player/footsteps/concrete2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/concrete4.wav", fvol); break;
+					}
 					break;
-				}
+				case CHAR_TEX_METAL:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/metal1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/metal3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/metal2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/metal4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_DIRT:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/dirt1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/dirt3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/dirt2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/dirt4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_VENT:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/duct1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/duct3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/duct2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/duct4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_GRATE:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/metalgrate1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/metalgrate3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/metalgrate2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/metalgrate4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_TILE:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/tile1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/tile3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/tile2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/tile4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_WOOD:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/wood1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/wood3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/wood2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/wood4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_SAND:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/sand1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/sand3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/sand2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/sand4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_MUD:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/mud1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/mud3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/mud2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/mud4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_GRASS:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/grass1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/grass3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/grass2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/grass4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_GRAVEL:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/gravel1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/gravel3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/gravel2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/gravel4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_CHAINLINK:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/chainlink1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/chainlink3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/chainlink2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/chainlink4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_SLOSH:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/slosh1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/slosh3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/slosh2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/slosh4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_WADE:
+					// todo there's 8 of these!
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/wade1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/wade2.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/wade3.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/wade4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_LADDER:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/footsteps/ladder1.wav", fvol); break;
+						case 1:	PlayGameSound("player/footsteps/ladder3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/footsteps/ladder2.wav", fvol); break;
+						case 3:	PlayGameSound("player/footsteps/ladder4.wav", fvol); break;
+					}
+					break;
+			}
+		}
+		else {
+			switch (step) {
+				default:
+				case CHAR_TEX_CONCRETE:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_step1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_step3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_step2.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_step4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_CHAINLINK:
+				case CHAR_TEX_METAL:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_metal1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_metal3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_metal2.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_metal4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_DIRT:
+				case CHAR_TEX_SAND:
+				case CHAR_TEX_MUD:
+				case CHAR_TEX_GRASS:
+				case CHAR_TEX_GRAVEL:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_dirt1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_dirt3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_dirt2.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_dirt4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_VENT:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_duct1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_duct3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_duct2.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_duct4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_GRATE:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_grate1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_grate3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_grate2.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_grate4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_TILE:
+					if (!(rand() % 5)) {
+						irand = 4;
+					}
 
-				if (iSkipStep++ == 3) {
-					iSkipStep = 0;
-				}
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_tile1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_tile3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_tile2.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_tile4.wav", fvol); break;
+						case 4: PlayGameSound("player/pl_tile5.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_SLOSH:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_slosh1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_slosh3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_slosh2.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_slosh4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_WADE:
+					if (iSkipStep == 0) {
+						iSkipStep++;
+						break;
+					}
 
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_wade1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_wade2.wav", fvol); break;
-					// left foot
-					case 2:	PlayGameSound("player/pl_wade3.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_wade4.wav", fvol); break;
-				}
-				break;
-			case CHAR_TEX_LADDER:
-				switch (irand) {
-					// right foot
-					case 0:	PlayGameSound("player/pl_ladder1.wav", fvol); break;
-					case 1:	PlayGameSound("player/pl_ladder3.wav", fvol); break;
-					// left foot
-					case 2:	PlayGameSound("player/pl_ladder2.wav", fvol); break;
-					case 3:	PlayGameSound("player/pl_ladder4.wav", fvol); break;
-				}
-				break;
+					if (iSkipStep++ == 3) {
+						iSkipStep = 0;
+					}
+
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_wade1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_wade2.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_wade3.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_wade4.wav", fvol); break;
+					}
+					break;
+				case CHAR_TEX_LADDER:
+					switch (irand) {
+						// right foot
+						case 0:	PlayGameSound("player/pl_ladder1.wav", fvol); break;
+						case 1:	PlayGameSound("player/pl_ladder3.wav", fvol); break;
+						// left foot
+						case 2:	PlayGameSound("player/pl_ladder2.wav", fvol); break;
+						case 3:	PlayGameSound("player/pl_ladder4.wav", fvol); break;
+					}
+					break;
+			}
 		}
 	}
 
@@ -659,8 +1009,14 @@ namespace FreemanAPI {
 			velrun = 80;		// UNDONE: Move walking to server
 			flduck = 100;
 		} else {
-			velwalk = 120;
-			velrun = 210;
+			if (bHL2Mode) {
+				velwalk = 90;
+				velrun = 220;
+			}
+			else {
+				velwalk = 120;
+				velrun = 210;
+			}
 			flduck = 0;
 		}
 
@@ -779,8 +1135,8 @@ namespace FreemanAPI {
 			}
 
 			pmove->flags &= ~FL_DUCKING;
-			pmove->bInDuck  = false;
-			pmove->view_ofs[UP] = VEC_VIEW;
+			pmove->bInDuckHL1  = false;
+			pmove->view_ofs[UP] = VEC_VIEW();
 			pmove->flDuckTime = 0;
 
 			VectorCopy(newOrigin, pmove->origin);
@@ -829,23 +1185,23 @@ namespace FreemanAPI {
 			pmove->cmd.upmove *= PLAYER_DUCKING_MULTIPLIER;
 		}
 
-		if ((pmove->cmd.buttons & IN_DUCK) || pmove->bInDuck || (pmove->flags & FL_DUCKING)) {
+		if ((pmove->cmd.buttons & IN_DUCK) || pmove->bInDuckHL1 || (pmove->flags & FL_DUCKING)) {
 			if (pmove->cmd.buttons & IN_DUCK) {
 				if ((nButtonPressed & IN_DUCK) && !(pmove->flags & FL_DUCKING)) {
 					// Use 1 second so super long jump will work
 					pmove->flDuckTime = 1000;
-					pmove->bInDuck = true;
+					pmove->bInDuckHL1 = true;
 				}
 
 				time = std::max(0.0, (1.0 - (float)pmove->flDuckTime / 1000.0));
 
-				if (pmove->bInDuck) {
+				if (pmove->bInDuckHL1) {
 					// Finish ducking immediately if duck time is over or not on ground
 					if (((float)pmove->flDuckTime / 1000.0 <= (1.0 - TIME_TO_DUCK)) || (pmove->onground == -1)) {
 						pmove->usehull = 1;
-						pmove->view_ofs[UP] = VEC_DUCK_VIEW;
+						pmove->view_ofs[UP] = VEC_DUCK_VIEW();
 						pmove->flags |= FL_DUCKING;
-						pmove->bInDuck = false;
+						pmove->bInDuckHL1 = false;
 
 						if (pmove->onground != -1) {
 							for (int i = 0; i < 3; i++) {
@@ -864,7 +1220,7 @@ namespace FreemanAPI {
 
 						// Calc parametric time
 						duckFraction = PM_SplineFraction(time, (1.0 / TIME_TO_DUCK));
-						pmove->view_ofs[UP] = ((VEC_DUCK_VIEW - fMore) * duckFraction) + (VEC_VIEW * (1 - duckFraction));
+						pmove->view_ofs[UP] = ((VEC_DUCK_VIEW() - fMore) * duckFraction) + (VEC_VIEW() * (1 - duckFraction));
 					}
 				}
 			} else {
@@ -901,7 +1257,6 @@ namespace FreemanAPI {
 		return pmove->waterlevel > 1;
 	}
 
-	// empty for now, might not be required
 	void PM_CheckVelocity() {
 		if (bSmartVelocityCap) {
 			// handle horizontal movement as one
@@ -1105,6 +1460,26 @@ namespace FreemanAPI {
 		return blocked;
 	}
 
+	void PlayerRoughLandingEffects(float fvol) {
+		if (fvol > 0.0) {
+			//
+			// Play landing sound right away.
+			pmove->flTimeStepSound = 400;
+
+			// Play step sound for current texture.
+			PM_PlayStepSound(pmove->chtexturetype, fvol);
+
+			//
+			// Knock the screen around a little bit, temporary effect.
+			//
+			pmove->punchangle[ROLL] = pmove->flFallVelocity * 0.013;
+
+			if (pmove->punchangle[PITCH] > 8) {
+				pmove->punchangle[PITCH] = 8;
+			}
+		}
+	}
+
 	int PM_FlyMove() {
 		int	bumpcount, numbumps;
 		NyaVec3Double dir;
@@ -1268,6 +1643,26 @@ namespace FreemanAPI {
 		if (allFraction == 0) {
 			VectorCopy(vec3_origin, pmove->velocity);
 			lastConsoleMsg = "Don't stick";
+		}
+
+		if (bHL2Mode) {
+			// Check if they slammed into a wall
+			float fSlamVol = 0.0f;
+
+			auto primal_velocity_2d = primal_velocity;
+			primal_velocity_2d[UP] = 0;
+			auto velocity2d = pmove->velocity;
+			velocity2d[UP] = 0;
+
+			float fLateralStoppingAmount = primal_velocity_2d.length() - velocity2d.length();
+			if (fLateralStoppingAmount > PLAYER_MAX_SAFE_FALL_SPEED * 2.0f) {
+				fSlamVol = 1.0f;
+			}
+			else if (fLateralStoppingAmount > PLAYER_MAX_SAFE_FALL_SPEED) {
+				fSlamVol = 0.85f;
+			}
+
+			PlayerRoughLandingEffects(fSlamVol);
 		}
 
 		return blocked;
@@ -1692,7 +2087,7 @@ namespace FreemanAPI {
 
 		// Acclerate upward
 		// If we are ducking...
-		if (pmove->bInDuck || (pmove->flags & FL_DUCKING)) {
+		if (pmove->bInDuckHL1 || (pmove->flags & FL_DUCKING)) {
 			// Adjust for super long jump module
 			// UNDONE -- note this should be based on forward angles, not current velocity.
 			if (cansuperjump && (pmove->cmd.buttons & IN_DUCK) && pmove->flDuckTime > 0 && pmove->velocity.length() > 50) {
@@ -1709,14 +2104,15 @@ namespace FreemanAPI {
 		}
 
 		if (bABH || bABHMixed) {
-			NyaVec3Double fwd, right, up;
-			AngleVectors(pmove->angles, fwd, right, up);
-			fwd[UP] = 0;
-			VectorNormalize(fwd);
+			// Add a little forward velocity based on your current forward velocity - if you are not sprinting.
+			NyaVec3Double vecForward;
+			AngleVectors(pmove->angles, vecForward);
+			vecForward[UP] = 0;
+			VectorNormalize(vecForward);
 
 			// hack for hl1 to have more responsive duck ABH
 			bool isSprinting = (pmove->cmd.buttons & IN_RUN) == 0;
-			if (pmove->bInDuck) isSprinting = false;
+			if (pmove->bInDuckHL1) isSprinting = false;
 
 			auto vel2D = pmove->velocity;
 			vel2D[UP] = 0;
@@ -1724,7 +2120,7 @@ namespace FreemanAPI {
 
 			// We give a certain percentage of the current forward movement as a bonus to the jump speed.  That bonus is clipped
 			// to not accumulate over time.
-			float flSpeedBoostPerc = (!isSprinting && !pmove->bInDuck) ? 0.5f : 0.1f;
+			float flSpeedBoostPerc = (!isSprinting && !pmove->bInDuckHL1) ? 0.5f : 0.1f;
 			float flSpeedAddition = std::abs(pmove->cmd.forwardmove * flSpeedBoostPerc);
 			float flMaxSpeed = pmove->maxspeed + (pmove->maxspeed * flSpeedBoostPerc);
 			float flNewSpeed = (flSpeedAddition + velLength2D);
@@ -1740,7 +2136,7 @@ namespace FreemanAPI {
 
 			// Add it on
 			auto endVel = pmove->velocity;
-			VectorAdd((fwd * flSpeedAddition), pmove->velocity, endVel);
+			VectorAdd((vecForward * flSpeedAddition), pmove->velocity, endVel);
 			if (!bABHMixed || endVel.length() > pmove->velocity.length()) {
 				pmove->velocity = endVel;
 			}
@@ -1878,6 +2274,650 @@ namespace FreemanAPI {
 		pmove->velocity[FORWARD] = pmove->movedir[FORWARD];
 	}
 
+	void SetDuckedEyeOffset(float duckFraction) {
+		auto vDuckHullMin = GetPlayerMins(true);
+		auto vStandHullMin = GetPlayerMins(false);
+
+		float fMore = (vDuckHullMin[UP] - vStandHullMin[UP]);
+
+		NyaVec3Double vecDuckViewOffset = GetPlayerViewOffset(true);
+		NyaVec3Double vecStandViewOffset = GetPlayerViewOffset(false);
+		NyaVec3Double temp = pmove->view_ofs;
+		temp[UP] = ((vecDuckViewOffset[UP] - fMore) * duckFraction) + (vecStandViewOffset[UP] * (1 - duckFraction));
+		pmove->view_ofs = temp;
+	}
+
+	void UpdateDuckJumpEyeOffset() {
+		if (pmove->m_flDuckJumpTime != 0.0f) {
+			float flDuckMilliseconds = std::max(0.0f, GAMEMOVEMENT_DUCK_TIME - (float)pmove->m_flDuckJumpTime);
+			float flDuckSeconds = flDuckMilliseconds / GAMEMOVEMENT_DUCK_TIME;
+			if (flDuckSeconds > TIME_TO_UNDUCK) {
+				pmove->m_flDuckJumpTime = 0.0f;
+				SetDuckedEyeOffset( 0.0f );
+			}
+			else {
+				float flDuckFraction = SimpleSpline(1.0f - (flDuckSeconds / TIME_TO_UNDUCK));
+				SetDuckedEyeOffset(flDuckFraction);
+			}
+		}
+	}
+
+	void HandleDuckingSpeedCrop() {
+		if (!(pmove->m_iSpeedCropped & SPEED_CROPPED_DUCK) && (pmove->flags & FL_DUCKING) && (GetGroundEntity() != NULL)) {
+			float frac = 0.33333333f;
+			pmove->cmd.forwardmove *= frac;
+			pmove->cmd.sidemove *= frac;
+			pmove->cmd.upmove *= frac;
+			pmove->m_iSpeedCropped |= SPEED_CROPPED_DUCK;
+		}
+	}
+
+	void FinishDuck() {
+		if (pmove->flags & FL_DUCKING) return;
+
+		pmove->flags |= FL_DUCKING;
+		pmove->m_bDucked = true;
+		pmove->m_bDucking = false;
+
+		pmove->view_ofs = GetPlayerViewOffset(true);
+
+		// HACKHACK - Fudge for collision bug - no time to fix this properly
+		if (GetGroundEntity() != NULL) {
+			for (int i = 0; i < 3; i++) {
+				pmove->origin[i] -= VEC_DUCK_HULL_MIN_SCALED()[i] - VEC_HULL_MIN_SCALED()[i];
+			}
+		}
+		else {
+			NyaVec3Double hullSizeNormal = VEC_HULL_MAX_SCALED() - VEC_HULL_MIN_SCALED();
+			NyaVec3Double hullSizeCrouch = VEC_DUCK_HULL_MAX_SCALED() - VEC_DUCK_HULL_MIN_SCALED();
+			NyaVec3Double viewDelta = (hullSizeNormal - hullSizeCrouch);
+			VectorAdd( pmove->origin, viewDelta, pmove->origin );
+		}
+
+		// todo
+		// See if we are stuck?
+		//FixPlayerCrouchStuck( true );
+
+		// Recategorize position since ducking can change origin
+		PM_CatagorizePosition();
+	}
+	
+	void StartUnDuckJump() {
+		pmove->flags |= FL_DUCKING;
+		pmove->m_bDucked = true;
+		pmove->m_bDucking = false;
+
+		pmove->view_ofs = GetPlayerViewOffset(true);
+
+		NyaVec3Double hullSizeNormal = VEC_HULL_MAX_SCALED() - VEC_HULL_MIN_SCALED();
+		NyaVec3Double hullSizeCrouch = VEC_DUCK_HULL_MAX_SCALED() - VEC_DUCK_HULL_MIN_SCALED();
+		NyaVec3Double viewDelta = (hullSizeNormal - hullSizeCrouch);
+		pmove->origin += viewDelta;
+
+		// todo
+		// See if we are stuck?
+		//FixPlayerCrouchStuck( true );
+
+		// Recategorize position since ducking can change origin
+		PM_CatagorizePosition();
+	}
+
+	void FinishUnDuckJump(pmtrace_t &trace) {
+		auto vecNewOrigin = pmove->origin;
+
+		//  Up for uncrouching.
+		NyaVec3Double hullSizeNormal = VEC_HULL_MAX_SCALED() - VEC_HULL_MIN_SCALED();
+		NyaVec3Double hullSizeCrouch = VEC_DUCK_HULL_MAX_SCALED() - VEC_DUCK_HULL_MIN_SCALED();
+		NyaVec3Double viewDelta = (hullSizeNormal - hullSizeCrouch);
+
+		float flDeltaZ = viewDelta[UP];
+		viewDelta[UP] *= trace.fraction;
+		flDeltaZ -= viewDelta[UP];
+
+		RemoveFlag(FL_DUCKING);
+		pmove->m_bDucked = false;
+		pmove->m_bDucking  = false;
+		pmove->m_bInDuckJump = false;
+		pmove->flDuckTime = 0.0f;
+		pmove->m_flDuckJumpTime = 0.0f;
+		pmove->m_flJumpTime = 0.0f;
+
+		auto vecViewOffset = GetPlayerViewOffset(false);
+		vecViewOffset[UP] -= flDeltaZ;
+		pmove->view_ofs = vecViewOffset;
+
+		VectorSubtract( vecNewOrigin, viewDelta, vecNewOrigin );
+		pmove->origin = vecNewOrigin;
+
+		// Recategorize position since ducking can change origin
+		PM_CatagorizePosition();
+	}
+	void FinishUnDuck() {
+		pmtrace_t trace;
+		NyaVec3Double newOrigin;
+
+		VectorCopy(pmove->origin, newOrigin);
+
+		if (GetGroundEntity() != NULL) {
+			for (int i = 0; i < 3; i++) {
+				newOrigin[i] += (VEC_DUCK_HULL_MIN_SCALED()[i] - VEC_HULL_MIN_SCALED()[i]);
+			}
+		}
+		else {
+			// If in air an letting go of crouch, make sure we can offset origin to make
+			//  up for uncrouching
+			NyaVec3Double hullSizeNormal = VEC_HULL_MAX_SCALED() - VEC_HULL_MIN_SCALED();
+			NyaVec3Double hullSizeCrouch = VEC_DUCK_HULL_MAX_SCALED() - VEC_DUCK_HULL_MIN_SCALED();
+			NyaVec3Double viewDelta = (hullSizeNormal - hullSizeCrouch);
+			viewDelta *= -1;
+			VectorAdd( newOrigin, viewDelta, newOrigin );
+		}
+
+		pmove->m_bDucked = false;
+		RemoveFlag(FL_DUCKING);
+		pmove->m_bDucking  = false;
+		pmove->m_bInDuckJump  = false;
+		pmove->view_ofs = GetPlayerViewOffset(false);
+		pmove->flDuckTime = 0;
+
+		pmove->origin = newOrigin;
+
+		// Recategorize position since ducking can change origin
+		PM_CatagorizePosition();
+	}
+
+	bool CanUnDuckJump(pmtrace_t &trace) {
+		// Trace down to the stand position and see if we can stand.
+		auto vecEnd = pmove->origin;
+		vecEnd[UP] -= 36.0f;						// This will have to change if bounding hull change!
+		if (IsUsingPlayerTraceFallback()) {
+			trace = GetClosestBBoxIntersection(pmove->origin, vecEnd);
+		}
+		else {
+			trace = PM_PlayerTraceDown(pmove->origin, vecEnd);
+		}
+
+		if (trace.fraction < 1.0f) {
+			// Find the endpoint.
+			vecEnd[UP] = pmove->origin[UP] + ( -36.0f * trace.fraction );
+
+			// Test a normal hull.
+			pmtrace_t traceUp;
+			bool bWasDucked = pmove->m_bDucked;
+			pmove->m_bDucked = false;
+			if (IsUsingPlayerTraceFallback()) {
+				traceUp = GetClosestBBoxIntersection(vecEnd, vecEnd);
+			}
+			else {
+				traceUp = PM_PlayerTrace(vecEnd, vecEnd);
+			}
+			pmove->m_bDucked = bWasDucked;
+			if (!traceUp.startsolid)
+				return true;
+		}
+
+		return false;
+	}
+	
+	bool CanUnduck() {
+		pmtrace_t trace;
+		auto newOrigin = pmove->origin;
+
+		if (GetGroundEntity() != NULL) {
+			for (int i = 0; i < 3; i++) {
+				newOrigin[i] += VEC_DUCK_HULL_MIN_SCALED()[i] - VEC_HULL_MIN_SCALED()[i];
+			}
+		}
+		else {
+			// If in air an letting go of crouch, make sure we can offset origin to make
+			//  up for uncrouching
+			NyaVec3Double hullSizeNormal = VEC_HULL_MAX_SCALED() - VEC_HULL_MIN_SCALED();
+			NyaVec3Double hullSizeCrouch = VEC_DUCK_HULL_MAX_SCALED() - VEC_DUCK_HULL_MIN_SCALED();
+			NyaVec3Double viewDelta = ( hullSizeNormal - hullSizeCrouch );
+			viewDelta *= -1;
+			VectorAdd(newOrigin, viewDelta, newOrigin);
+		}
+
+		bool saveducked = pmove->m_bDucked;
+		pmove->m_bDucked = false;
+		if (IsUsingPlayerTraceFallback()) {
+			trace = GetClosestBBoxIntersection(pmove->origin, newOrigin);
+		}
+		else {
+			trace = PM_PlayerTrace(pmove->origin, newOrigin);
+		}
+		pmove->m_bDucked = saveducked;
+		if (trace.startsolid || (trace.fraction != 1.0f))
+			return false;
+
+		return true;
+	}
+
+	void Duck() {
+		auto mv = pmove;
+		int buttonsChanged	= (mv->oldbuttons ^ mv->cmd.buttons);	// These buttons have changed this frame
+		int buttonsPressed	=  buttonsChanged & mv->cmd.buttons;	// The changed ones still down are "pressed"
+		int buttonsReleased	=  buttonsChanged & mv->oldbuttons;		// The changed ones which were previously down are "released"
+
+		// Check to see if we are in the air.
+		bool bInAir = (GetGroundEntity() == NULL);
+		bool bInDuck = (pmove->flags & FL_DUCKING) != 0;
+		bool bDuckJump = (pmove->m_flJumpTime > 0.0f);
+		bool bDuckJumpTime = (pmove->m_flDuckJumpTime > 0.0f);
+
+		if (mv->cmd.buttons & IN_DUCK) {
+			mv->oldbuttons |= IN_DUCK;
+		}
+		else {
+			mv->oldbuttons &= ~IN_DUCK;
+		}
+
+		// Handle death.
+		if (IsDead()) return;
+
+		// Slow down ducked players.
+		HandleDuckingSpeedCrop();
+
+		// If the player is holding down the duck button, the player is in duck transition, ducking, or duck-jumping.
+		if ((mv->cmd.buttons & IN_DUCK) || mv->m_bDucking || bInDuck || bDuckJump) {
+			// DUCK
+			if ((mv->cmd.buttons & IN_DUCK) || bDuckJump) {
+				// Have the duck button pressed, but the player currently isn't in the duck position.
+				if ((buttonsPressed & IN_DUCK) && !bInDuck && !bDuckJump && !bDuckJumpTime) {
+					mv->flDuckTime = GAMEMOVEMENT_DUCK_TIME;
+					mv->m_bDucking = true;
+				}
+
+				// The player is in duck transition and not duck-jumping.
+				if (mv->m_bDucking && !bDuckJump && !bDuckJumpTime) {
+					float flDuckMilliseconds = std::max(0.0f, GAMEMOVEMENT_DUCK_TIME - mv->flDuckTime);
+					float flDuckSeconds = flDuckMilliseconds * 0.001f;
+
+					// Finish in duck transition when transition time is over, in "duck", in air.
+					if ((flDuckSeconds > TIME_TO_DUCK) || bInDuck || bInAir) {
+						FinishDuck();
+					}
+					else {
+						// Calc parametric time
+						float flDuckFraction = SimpleSpline(flDuckSeconds / TIME_TO_DUCK);
+						SetDuckedEyeOffset(flDuckFraction);
+					}
+				}
+
+				if (bDuckJump) {
+					// Make the bounding box small immediately.
+					if (!bInDuck) {
+						StartUnDuckJump();
+					}
+					else {
+						// Check for a crouch override.
+						if (!(mv->cmd.buttons & IN_DUCK)) {
+							pmtrace_t trace;
+							if (CanUnDuckJump(trace)) {
+								FinishUnDuckJump(trace);
+								mv->m_flDuckJumpTime = (GAMEMOVEMENT_TIME_TO_UNDUCK * (1.0f - trace.fraction)) + GAMEMOVEMENT_TIME_TO_UNDUCK_INV;
+							}
+						}
+					}
+				}
+			}
+			// UNDUCK (or attempt to...)
+			else {
+				if (mv->m_bInDuckJump) {
+					// Check for a crouch override.
+					if (!(mv->cmd.buttons & IN_DUCK)) {
+						pmtrace_t trace;
+						if (CanUnDuckJump(trace)) {
+							FinishUnDuckJump(trace);
+
+							if (trace.fraction < 1.0f) {
+								mv->m_flDuckJumpTime = (GAMEMOVEMENT_TIME_TO_UNDUCK * (1.0f - trace.fraction)) + GAMEMOVEMENT_TIME_TO_UNDUCK_INV;
+							}
+						}
+					}
+					else {
+						mv->m_bInDuckJump = false;
+					}
+				}
+
+				if (bDuckJumpTime) return;
+
+				// Try to unduck unless automovement is not allowed
+				// NOTE: When not onground, you can always unduck
+				if (mv->m_bAllowAutoMovement || bInAir || mv->m_bDucking) {
+					// We released the duck button, we aren't in "duck" and we are not in the air - start unduck transition.
+					if ((buttonsReleased & IN_DUCK)) {
+						if (bInDuck && !bDuckJump) {
+							mv->flDuckTime = GAMEMOVEMENT_DUCK_TIME;
+						}
+						else if (mv->m_bDucking && !mv->m_bDucked) {
+							// Invert time if release before fully ducked!!!
+							float unduckMilliseconds = 1000.0f * TIME_TO_UNDUCK;
+							float duckMilliseconds = 1000.0f * TIME_TO_DUCK;
+							float elapsedMilliseconds = GAMEMOVEMENT_DUCK_TIME - mv->flDuckTime;
+
+							float fracDucked = elapsedMilliseconds / duckMilliseconds;
+							float remainingUnduckMilliseconds = fracDucked * unduckMilliseconds;
+
+							mv->flDuckTime = GAMEMOVEMENT_DUCK_TIME - unduckMilliseconds + remainingUnduckMilliseconds;
+						}
+					}
+
+
+					// Check to see if we are capable of unducking.
+					if (CanUnduck()) {
+						// or unducking
+						if ((mv->m_bDucking || mv->m_bDucked)) {
+							float flDuckMilliseconds = std::max(0.0f, GAMEMOVEMENT_DUCK_TIME - (float)mv->flDuckTime);
+							float flDuckSeconds = flDuckMilliseconds * 0.001f;
+
+							// Finish ducking immediately if duck time is over or not on ground
+							if (flDuckSeconds > TIME_TO_UNDUCK || (bInAir && !bDuckJump)) {
+								FinishUnDuck();
+							}
+							else {
+								// Calc parametric time
+								float flDuckFraction = SimpleSpline(1.0f - (flDuckSeconds / TIME_TO_UNDUCK));
+								SetDuckedEyeOffset(flDuckFraction);
+								mv->m_bDucking = true;
+							}
+						}
+					}
+					else {
+						// Still under something where we can't unduck, so make sure we reset this timer so
+						//  that we'll unduck once we exit the tunnel, etc.
+						if (mv->flDuckTime != GAMEMOVEMENT_DUCK_TIME) {
+							SetDuckedEyeOffset(1.0f);
+							mv->flDuckTime = GAMEMOVEMENT_DUCK_TIME;
+							mv->m_bDucked = true;
+							mv->m_bDucking = false;
+							mv->flags |= FL_DUCKING;
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	bool CheckJumpButton() {
+		if (pmove->dead) {
+			pmove->oldbuttons |= IN_JUMP;	// don't jump again until released
+			return false;
+		}
+
+		// See if we are waterjumping.  If so, decrement count and return.
+		if (pmove->waterjumptime) {
+			pmove->waterjumptime -= pmove->cmd.msec;
+			if (pmove->waterjumptime < 0) {
+				pmove->waterjumptime = 0;
+			}
+
+			return false;
+		}
+
+		// If we are in the water most of the way...
+		if (pmove->waterlevel >= 2) {
+			// swimming, not jumping
+			pmove->onground = -1;
+
+			if(pmove->watertype == CONTENTS_WATER) {    // We move up a certain amount
+				pmove->velocity[UP] = 100;
+			}
+			else if (pmove->watertype == CONTENTS_SLIME) {
+				pmove->velocity[UP] = 80;
+			}
+
+			// play swiming sound
+			if (pmove->flSwimTime <= 0) {
+				// Don't play sound again for 1 second
+				pmove->flSwimTime = 1000;
+				PlaySwimSound();
+			}
+
+			return false;
+		}
+
+		// No more effect
+		if (GetGroundEntity() == NULL) {
+			pmove->oldbuttons |= IN_JUMP;
+			return false;		// in air, so no effect
+		}
+
+		if (!bAutoHop && pmove->oldbuttons & IN_JUMP) return false; // don't pogo stick
+
+		// Cannot jump will in the unduck transition.
+		if (pmove->m_bDucking && (pmove->flags & FL_DUCKING)) return false;
+
+		// Still updating the eye position.
+		if (pmove->m_flDuckJumpTime > 0.0f) return false;
+
+		// In the air now.
+		pmove->onground = -1;
+
+		PM_PreventMegaBunnyJumping();
+
+		PM_PlayStepSound(pmove->chtexturetype, 1.0);
+
+		float flGroundFactor = 1.0f;
+		// todo
+		//if (player->m_pSurfaceData) {
+		//	flGroundFactor = player->m_pSurfaceData->game.jumpFactor;
+		//}
+
+		float flMul = std::sqrt(2 * CVar_HL2::sv_gravity * GAMEMOVEMENT_JUMP_HEIGHT);
+
+		// Acclerate upward
+		// If we are ducking...
+		float startz = pmove->velocity[UP];
+		if ((pmove->m_bDucking) || (pmove->flags & FL_DUCKING)) {
+			// d = 0.5 * g * t^2		- distance traveled with linear accel
+			// t = sqrt(2.0 * 45 / g)	- how long to fall 45 units
+			// v = g * t				- velocity at the end (just invert it to jump up that high)
+			// v = g * sqrt(2.0 * 45 / g )
+			// v^2 = g * g * 2.0 * 45 / g
+			// v = sqrt( g * 2.0 * 45 )
+			pmove->velocity[UP] = flGroundFactor * flMul;  // 2 * gravity * height
+		}
+		else {
+			pmove->velocity[UP] += flGroundFactor * flMul;  // 2 * gravity * height
+		}
+
+		if (bABH || bABHMixed) {
+			// Add a little forward velocity based on your current forward velocity - if you are not sprinting.
+			NyaVec3Double vecForward;
+			AngleVectors(pmove->angles, vecForward);
+			vecForward[UP] = 0;
+			VectorNormalize(vecForward);
+
+			auto vel2D = pmove->velocity;
+			vel2D[UP] = 0;
+			auto velLength2D = vel2D.length();
+
+			// We give a certain percentage of the current forward movement as a bonus to the jump speed.  That bonus is clipped
+			// to not accumulate over time.
+			float flSpeedBoostPerc = (!pmove->m_bIsSprinting && !pmove->m_bDucked) ? 0.5f : 0.1f;
+			float flSpeedAddition = std::abs(pmove->cmd.forwardmove * flSpeedBoostPerc);
+			float flMaxSpeed = pmove->maxspeed + (pmove->maxspeed * flSpeedBoostPerc);
+			float flNewSpeed = (flSpeedAddition + velLength2D);
+
+			// If we're over the maximum, we want to only boost as much as will get us to the goal speed
+			if (flNewSpeed > flMaxSpeed) {
+				flSpeedAddition -= flNewSpeed - flMaxSpeed;
+			}
+
+			if (pmove->cmd.forwardmove < 0.0f) {
+				flSpeedAddition *= -1.0f;
+			}
+
+			// Add it on
+			auto endVel = pmove->velocity;
+			VectorAdd((vecForward * flSpeedAddition), pmove->velocity, endVel);
+			if (!bABHMixed || endVel.length() > pmove->velocity.length()) {
+				pmove->velocity = endVel;
+			}
+		}
+
+		PM_FixupGravityVelocity();
+
+		// todo?
+		//mv->m_outJumpVel.z += pmove->velocity[UP] - startz;
+		//mv->m_outStepHeight += 0.15f;
+
+		// Set jump time.
+		pmove->m_flJumpTime = GAMEMOVEMENT_JUMP_TIME;
+		pmove->m_bInDuckJump = true;
+
+		// Flag that we jumped.
+		pmove->oldbuttons |= IN_JUMP;	// don't jump again until released
+		return true;
+	}
+
+	void CheckFalling() {
+		// this function really deals with landing, not falling, so early out otherwise
+		if (GetGroundEntity() == NULL || pmove->flFallVelocity <= 0)
+			return;
+
+		if (!IsDead() && pmove->flFallVelocity >= PLAYER_FALL_PUNCH_THRESHOLD_HL2)
+		{
+			bool bAlive = true;
+			float fvol = 0.5;
+
+			if (pmove->waterlevel > 0) {
+				// They landed in water.
+			}
+			else {
+				// Scale it down if we landed on something that's floating...
+				//if (player->GetGroundEntity()->IsFloating()) {
+				//	pmove->flFallVelocity -= PLAYER_LAND_ON_FLOATING_OBJECT_HL2;
+				//}
+
+				//
+				// They hit the ground.
+				//
+				//if (player->GetGroundEntity()->GetAbsVelocity().z < 0.0f) {
+				//	// Player landed on a descending object. Subtract the velocity of the ground entity.
+				//	pmove->m_flFallVelocity += player->GetGroundEntity()->GetAbsVelocity().z;
+				//	pmove->m_flFallVelocity = std::max(0.1f, pmove->flFallVelocity);
+				//}
+
+				if (pmove->flFallVelocity > PLAYER_MAX_SAFE_FALL_SPEED_HL2) {
+					//
+					// If they hit the ground going this fast they may take damage (and die).
+					//
+					//bAlive = MoveHelper( )->PlayerFallingDamage();
+					
+					// subtract off the speed at which a player is allowed to fall without being hurt,
+					// so damage will be based on speed beyond that, not the entire fall
+
+					// NOTE: this line introduces a bug with fall punch calculation in original HL2 but is part of CSingleplayRules::FlPlayerFallDamage
+					// keeping it here to stay authentic
+					pmove->flFallVelocity -= PLAYER_MAX_SAFE_FALL_SPEED;
+					
+					switch (rand() % 2) {
+						case 0:
+							PlayGameSound("player/pl_fallpain1.wav", 1);
+							break;
+						case 1:
+							PlayGameSound("player/pl_fallpain2.wav", 1);
+							break;
+					}
+					fvol = 1.0;
+				}
+				else if (pmove->flFallVelocity > PLAYER_MAX_SAFE_FALL_SPEED_HL2 / 2) {
+					fvol = 0.85;
+				}
+				else if (pmove->flFallVelocity < PLAYER_MIN_BOUNCE_SPEED_HL2) {
+					fvol = 0;
+				}
+			}
+
+			PlayerRoughLandingEffects(fvol);
+		}
+
+		//
+		// Clear the fall velocity so the impact doesn't happen again.
+		//
+		pmove->flFallVelocity = 0;
+	}
+
+	void FullNoClipMove(float factor, float maxacceleration) {
+		NyaVec3Double wishvel;
+		NyaVec3Double forward, right, up;
+		NyaVec3Double wishdir;
+		float wishspeed;
+		float maxspeed = CVar_HL2::sv_maxspeed * factor;
+
+		AngleVectors(pmove->angles, forward, right, up);  // Determine movement angles
+
+		if (pmove->cmd.buttons & IN_SPEED) {
+			factor /= 2.0f;
+		}
+
+		// Copy movement amounts
+		float fmove = pmove->cmd.forwardmove * factor;
+		float smove = pmove->cmd.sidemove * factor;
+
+		VectorNormalize(forward);  // Normalize remainder of vectors
+		VectorNormalize(right);    //
+
+		for (int i = 0; i < 3; i++) {       // Determine x and y parts of velocity
+			wishvel[i] = forward[i] * fmove + right[i] * smove;
+		}
+		wishvel[UP] += pmove->cmd.upmove * factor;
+
+		VectorCopy(wishvel, wishdir);   // Determine maginitude of speed of move
+		wishspeed = VectorNormalize(wishdir);
+
+		//
+		// Clamp to server defined max speed
+		//
+		if (wishspeed > maxspeed) {
+			VectorScale(wishvel, maxspeed/wishspeed, wishvel);
+			wishspeed = maxspeed;
+		}
+
+		if (maxacceleration > 0.0) {
+			// Set pmove velocity
+			PM_Accelerate(wishdir, wishspeed, maxacceleration);
+
+			float spd = pmove->velocity.length();
+			if (spd < 1.0f) {
+				pmove->velocity = {0,0,0};
+				return;
+			}
+
+			// Bleed off some speed, but if we have less than the bleed
+			//  threshhold, bleed the theshold amount.
+			float control = (spd < maxspeed/4.0) ? maxspeed/4.0 : spd;
+
+			float friction = CVar_HL2::sv_friction * pmove->friction;
+
+			// Add the amount to the drop amount.
+			float drop = control * friction * pmove->frametime;
+
+			// scale the velocity
+			float newspeed = spd - drop;
+			if (newspeed < 0) {
+				newspeed = 0;
+			}
+
+			// Determine proportion of old speed we are using.
+			newspeed /= spd;
+			VectorScale(pmove->velocity, newspeed, pmove->velocity);
+		}
+		else {
+			VectorCopy(wishvel, pmove->velocity);
+		}
+
+		// Just move ( don't clip or anything )
+		VectorMA(pmove->origin, pmove->frametime, pmove->velocity, pmove->origin);
+
+		// Zero out velocity if in noaccel mode
+		if (maxacceleration < 0.0f) {
+			pmove->velocity = {0,0,0};
+		}
+	}
+
 	void PM_PlayerMove(double delta) {
 		physent_t *pLadder = nullptr;
 
@@ -1930,7 +2970,13 @@ namespace FreemanAPI {
 
 		PM_UpdateStepSound();
 
-		PM_Duck();
+		if (bHL2Mode) {
+			UpdateDuckJumpEyeOffset();
+			Duck();
+		}
+		else {
+			PM_Duck();
+		}
 
 		// todo
 		// Don't run ladder code if dead or on a train
@@ -1954,7 +3000,12 @@ namespace FreemanAPI {
 				break;
 
 			case MOVETYPE_NOCLIP:
-				PM_NoClip();
+				if (bHL2Mode) {
+					FullNoClipMove(CVar_HL2::sv_noclipspeed, CVar_HL2::sv_noclipaccelerate);
+				}
+				else {
+					PM_NoClip();
+				}
 				break;
 
 			//case MOVETYPE_TOSS:
@@ -2025,12 +3076,22 @@ namespace FreemanAPI {
 				}
 				else { // Not underwater
 					// Was jump button pressed?
-					if (pmove->cmd.buttons & IN_JUMP) {
-						if (!pLadder) {
-							PM_Jump();
+					if (bHL2Mode) {
+						if (pmove->cmd.buttons & IN_JUMP) {
+							CheckJumpButton();
 						}
-					} else {
-						pmove->oldbuttons &= ~IN_JUMP;
+						else {
+							pmove->oldbuttons &= ~IN_JUMP;
+						}
+					}
+					else {
+						if (pmove->cmd.buttons & IN_JUMP) {
+							if (!pLadder) {
+								PM_Jump();
+							}
+						} else {
+							pmove->oldbuttons &= ~IN_JUMP;
+						}
 					}
 
 					// Fricion is handled before we add in any base velocity. That way, if we are on a conveyor,
@@ -2073,30 +3134,46 @@ namespace FreemanAPI {
 
 					// See if we landed on the ground with enough force to play
 					//  a landing sound.
-					PM_CheckFalling();
+					if (bHL2Mode) {
+						CheckFalling();
+					}
+					else {
+						PM_CheckFalling();
+					}
 				}
 
 				// Did we enter or leave the water?
-				PM_PlayWaterSounds();
+				if (bHL2Mode) {
+					if ((pmove->oldwaterlevel == 0 && pmove->waterlevel != 0) || (pmove->oldwaterlevel != 0 && pmove->waterlevel == 0)) {
+						PlaySwimSound();
+					}
+				}
+				else {
+					PM_PlayWaterSounds();
+				}
 				break;
 		}
 	}
 
+	bool CanSprint() {
+		return !(pmove->m_bDucked && !pmove->m_bDucking) && (pmove->waterlevel != 3);
+	}
+
 	void SetupMoveParams() {
-		movevars->gravity = sv_gravity;  			// Gravity for map
-		movevars->stopspeed = sv_stopspeed;			// Deceleration when not moving
-		movevars->maxspeed = sv_maxspeed; 			// Max allowed speed
-		movevars->accelerate = sv_accelerate;			// Acceleration factor
-		movevars->airaccelerate = sv_airaccelerate;		// Same for when in open air
-		movevars->wateraccelerate = sv_wateraccelerate;		// Same for when in water
-		movevars->friction = sv_friction;
-		movevars->edgefriction = sv_edgefriction;
-		movevars->waterfriction = sv_waterfriction;		// Less in water
-		movevars->bounce = sv_bounce;      		// Wall bounce value. 1.0
-		movevars->stepsize = sv_stepsize;    		// sv_stepsize;
-		movevars->maxvelocity = sv_maxvelocity; 		// maximum server velocity.
-		movevars->rollangle = sv_rollangle;
-		movevars->rollspeed = sv_rollspeed;
+		movevars->gravity = bHL2Mode ? CVar_HL2::sv_gravity : CVar_HL1::sv_gravity;  			// Gravity for map
+		movevars->stopspeed = bHL2Mode ? CVar_HL2::sv_stopspeed : CVar_HL1::sv_stopspeed;			// Deceleration when not moving
+		movevars->maxspeed = bHL2Mode ? CVar_HL2::sv_maxspeed : CVar_HL1::sv_maxspeed; 			// Max allowed speed
+		movevars->accelerate = bHL2Mode ? CVar_HL2::sv_accelerate : CVar_HL1::sv_accelerate;			// Acceleration factor
+		movevars->airaccelerate = bHL2Mode ? CVar_HL2::sv_airaccelerate : CVar_HL1::sv_airaccelerate;		// Same for when in open air
+		movevars->wateraccelerate = bHL2Mode ? CVar_HL2::sv_wateraccelerate : CVar_HL1::sv_wateraccelerate;		// Same for when in water
+		movevars->friction = bHL2Mode ? CVar_HL2::sv_friction : CVar_HL1::sv_friction;
+		movevars->edgefriction = bHL2Mode ? CVar_HL2::sv_edgefriction : CVar_HL1::sv_edgefriction;
+		movevars->waterfriction = bHL2Mode ? CVar_HL2::sv_waterfriction : CVar_HL1::sv_waterfriction;		// Less in water
+		movevars->bounce = bHL2Mode ? CVar_HL2::sv_bounce : CVar_HL1::sv_bounce;      		// Wall bounce value. 1.0
+		movevars->stepsize = bHL2Mode ? CVar_HL2::sv_stepsize : CVar_HL1::sv_stepsize;
+		movevars->maxvelocity = bHL2Mode ? CVar_HL2::sv_maxvelocity : CVar_HL1::sv_maxvelocity; 		// maximum server velocity.
+		movevars->rollangle = bHL2Mode ? CVar_HL2::sv_rollangle : CVar_HL1::sv_rollangle;
+		movevars->rollspeed = bHL2Mode ? CVar_HL2::sv_rollspeed : CVar_HL1::sv_rollspeed;
 
 		// todo train velocity
 		pmove->basevelocity = {0,0,0};
@@ -2105,25 +3182,53 @@ namespace FreemanAPI {
 		pmove->friction = 1;
 		GetGamePlayerViewAngle(&pmove->cmd.viewangles);
 		pmove->clientmaxspeed = movevars->maxspeed;
-		if (pmove->movetype == MOVETYPE_NOCLIP) pmove->clientmaxspeed = sv_noclipspeed;
+		if (!bHL2Mode && pmove->movetype == MOVETYPE_NOCLIP) pmove->clientmaxspeed = CVar_HL1::sv_noclipspeed;
 		pmove->maxspeed = pmove->clientmaxspeed; // not sure what the difference is here? todo?
 		pmove->dead = GetGamePlayerDead();
+		pmove->m_bIsSprinting = false;
 
 		pmove->cmd.forwardmove = 0;
 		pmove->cmd.sidemove = 0;
 		pmove->cmd.upmove = 0;
 		pmove->cmd.buttons = 0;
 
-		if (EXT_GetGameMoveLeftRight) pmove->cmd.sidemove += cl_sidespeed * EXT_GetGameMoveLeftRight();
-		if (EXT_GetGameMoveFwdBack) pmove->cmd.forwardmove += cl_forwardspeed * EXT_GetGameMoveFwdBack();
-		if (EXT_GetGameMoveUpDown) pmove->cmd.upmove += cl_upspeed * EXT_GetGameMoveUpDown();
+		if (bHL2Mode) {
+			pmove->maxspeed = CVar_HL2::HL2_NORM_SPEED;
+		}
+
+		float forwardspeed = bHL2Mode ? CVar_HL2::cl_forwardspeed : CVar_HL1::cl_forwardspeed;
+		float sidespeed = bHL2Mode ? CVar_HL2::cl_sidespeed : CVar_HL1::cl_sidespeed;
+		float upspeed = bHL2Mode ? CVar_HL2::cl_upspeed : CVar_HL1::cl_upspeed;
+
+		if (EXT_GetGameMoveLeftRight) pmove->cmd.sidemove += sidespeed * EXT_GetGameMoveLeftRight();
+		if (EXT_GetGameMoveFwdBack) pmove->cmd.forwardmove += forwardspeed * EXT_GetGameMoveFwdBack();
+		if (EXT_GetGameMoveUpDown) pmove->cmd.upmove += upspeed * EXT_GetGameMoveUpDown();
 		if (EXT_GetGameMoveUse && EXT_GetGameMoveUse()) pmove->cmd.buttons |= IN_USE;
 		if (EXT_GetGameMoveJump && EXT_GetGameMoveJump()) pmove->cmd.buttons |= IN_JUMP;
 		if (EXT_GetGameMoveDuck && EXT_GetGameMoveDuck()) pmove->cmd.buttons |= IN_DUCK;
 		if (EXT_GetGameMoveRun && EXT_GetGameMoveRun()) {
-			pmove->cmd.buttons |= IN_RUN;
-			pmove->cmd.forwardmove *= cl_movespeedkey;
-			pmove->cmd.sidemove *= cl_movespeedkey;
+			if (bHL2Mode) {
+				if (CanSprint()) {
+					pmove->m_bIsSprinting = true;
+					pmove->cmd.buttons |= IN_SPEED;
+					pmove->maxspeed = CVar_HL2::HL2_SPRINT_SPEED;
+					if (!(pmove->oldbuttons & IN_SPEED)) {
+						PlayGameSound("player/suit_sprint.wav", 1);
+					}
+				}
+			}
+			else {
+				pmove->cmd.buttons |= IN_RUN;
+				pmove->cmd.forwardmove *= CVar_HL1::cl_movespeedkey;
+				pmove->cmd.sidemove *= CVar_HL1::cl_movespeedkey;
+			}
+		}
+
+		if (pmove->cmd.buttons & IN_SPEED) {
+			pmove->oldbuttons |= IN_SPEED;
+		}
+		else {
+			pmove->oldbuttons &= ~IN_SPEED;
 		}
 	}
 
@@ -2144,6 +3249,29 @@ namespace FreemanAPI {
 		SetGamePlayerPosition(&origin, &velocity);
 		SetGamePlayerViewPosition(&eye);
 		SetGamePlayerViewAngle(&pmove->angles);
+	}
+
+	void SetPlayerBBoxes() {
+		if (bHL2Mode) {
+			for (int i = 0; i < 4; i++) {
+				pmove->player_mins[i][0] = pm_hullmins_hl2[i][0];
+				pmove->player_mins[i][FORWARD] = pm_hullmins_hl2[i][1];
+				pmove->player_mins[i][UP] = pm_hullmins_hl2[i][2];
+				pmove->player_maxs[i][0] = pm_hullmaxs_hl2[i][0];
+				pmove->player_maxs[i][FORWARD] = pm_hullmaxs_hl2[i][1];
+				pmove->player_maxs[i][UP] = pm_hullmaxs_hl2[i][2];
+			}
+		}
+		else {
+			for (int i = 0; i < 4; i++) {
+				pmove->player_mins[i][0] = pm_hullmins[i][0];
+				pmove->player_mins[i][FORWARD] = pm_hullmins[i][1];
+				pmove->player_mins[i][UP] = pm_hullmins[i][2];
+				pmove->player_maxs[i][0] = pm_hullmaxs[i][0];
+				pmove->player_maxs[i][FORWARD] = pm_hullmaxs[i][1];
+				pmove->player_maxs[i][UP] = pm_hullmaxs[i][2];
+			}
+		}
 	}
 
 	void Reset() {
@@ -2170,12 +3298,12 @@ namespace FreemanAPI {
 		pmove->usehull = 0;
 		pmove->view_ofs[0] = 0;
 		pmove->view_ofs[FORWARD] = 0;
-		pmove->view_ofs[UP] = VEC_VIEW;
+		pmove->view_ofs[UP] = VEC_VIEW();
 		pmove->forward = {0,0,0};
 		pmove->right = {0,0,0};
 		pmove->up = {0,0,0};
 		pmove->flDuckTime = 0;
-		pmove->bInDuck = false;
+		pmove->bInDuckHL1 = false;
 		pmove->flTimeStepSound = 0;
 		pmove->iStepLeft = 0;
 		pmove->flFallVelocity = 0;
@@ -2192,21 +3320,25 @@ namespace FreemanAPI {
 		pmove->oldwaterlevel = 0;
 		pmove->watertype = CONTENTS_EMPTY;
 		pmove->chtexturetype = CHAR_TEX_CONCRETE;
-		pmove->maxspeed = sv_maxspeed;
-		pmove->clientmaxspeed = sv_maxspeed;
+		pmove->maxspeed = bHL2Mode ? CVar_HL2::sv_maxspeed : CVar_HL1::sv_maxspeed;
+		pmove->clientmaxspeed = bHL2Mode ? CVar_HL2::sv_maxspeed : CVar_HL1::sv_maxspeed;
 		pmove->cmd.forwardmove = 0;
 		pmove->cmd.sidemove = 0;
 		pmove->cmd.upmove = 0;
 		pmove->cmd.buttons = 0;
 		pmove->cmd.msec = 0;
-		for (int i = 0; i < 4; i++) {
-			pmove->player_mins[i][0] = pm_hullmins[i][0];
-			pmove->player_mins[i][FORWARD] = pm_hullmins[i][1];
-			pmove->player_mins[i][UP] = pm_hullmins[i][2];
-			pmove->player_maxs[i][0] = pm_hullmaxs[i][0];
-			pmove->player_maxs[i][FORWARD] = pm_hullmaxs[i][1];
-			pmove->player_maxs[i][UP] = pm_hullmaxs[i][2];
-		}
+
+		// hl2 vars
+		pmove->m_bDucked = false;
+		pmove->m_bDucking = false;
+		pmove->m_bInDuckJump = false;
+		pmove->m_flDuckJumpTime = 0;
+		pmove->m_flJumpTime = 0;
+		pmove->m_iSpeedCropped = 0;
+		pmove->m_bIsSprinting = 0;
+		pmove->m_bAllowAutoMovement = true;
+		pmove->m_vecPunchAngleVel = {0,0,0};
+		SetPlayerBBoxes();
 	}
 
 	void ToggleNoclip() {
@@ -2215,7 +3347,19 @@ namespace FreemanAPI {
 	}
 
 	void Process(double delta) {
+		// reset view offset if hl2 mode was swapped
+		static bool bLastHL2 = bHL2Mode;
+		if (bLastHL2 != bHL2Mode) {
+			pmove->view_ofs[0] = 0;
+			pmove->view_ofs[FORWARD] = 0;
+			pmove->view_ofs[UP] = VEC_VIEW();
+		}
+		bLastHL2 = bHL2Mode;
+
 		SetupMoveParams();
+
+		SetPlayerBBoxes();
+		pmove->m_iSpeedCropped = SPEED_CROPPED_RESET;
 
 		int numSteps = nPhysicsSteps;
 		if (numSteps < 1) numSteps = 1;
@@ -2229,9 +3373,10 @@ namespace FreemanAPI {
 	void FillConfig() {
 		if (aBehaviorConfig.empty()) {
 			AddBoolToCustomConfig(&aBehaviorConfig, "Enabled", "enabled", &bEnabled);
+			AddBoolToCustomConfig(&aBehaviorConfig, "Half-Life 2 Mode", "hl2", &bHL2Mode);
 			AddBoolToCustomConfig(&aBehaviorConfig, "ABH", "abh", &bABH);
 			AddBoolToCustomConfig(&aBehaviorConfig, "Mixed ABH", "abh_mixed", &bABHMixed);
-			AddBoolToCustomConfig(&aBehaviorConfig, "Long Jump Module", "longjump", &bCanLongJump);
+			AddBoolToCustomConfig(&aBehaviorConfig, "Long Jump Module (HL1)", "longjump", &bCanLongJump);
 			AddBoolToCustomConfig(&aBehaviorConfig, "Bhop Speed Cap", "bhop_cap", &bBhopCap);
 			AddBoolToCustomConfig(&aBehaviorConfig, "Better sv_maxvelocity", "better_maxvelocity", &bSmartVelocityCap);
 			AddBoolToCustomConfig(&aBehaviorConfig, "Noclip Key", "noclip_toggle", &bNoclipKey);
@@ -2240,31 +3385,60 @@ namespace FreemanAPI {
 			AddIntToCustomConfig(&aAdvancedConfig, "Collision Density", "collision_density", &nColDensity);
 			AddIntToCustomConfig(&aAdvancedConfig, "Physics Steps", "physics_steps", &nPhysicsSteps);
 		}
-		if (aCVarConfig.empty()) {
-			AddFloatToCustomConfig(&aCVarConfig, "cl_bob", "cl_bob", &cl_bob);
-			AddFloatToCustomConfig(&aCVarConfig, "cl_bobcycle", "cl_bobcycle", &cl_bobcycle);
-			AddFloatToCustomConfig(&aCVarConfig, "cl_bobup", "cl_bobup", &cl_bobup);
-			AddFloatToCustomConfig(&aCVarConfig, "cl_forwardspeed", "cl_forwardspeed", &cl_forwardspeed);
-			AddFloatToCustomConfig(&aCVarConfig, "cl_sidespeed", "cl_sidespeed", &cl_sidespeed);
-			AddFloatToCustomConfig(&aCVarConfig, "cl_upspeed", "cl_upspeed", &cl_upspeed);
-			AddFloatToCustomConfig(&aCVarConfig, "cl_movespeedkey", "cl_movespeedkey", &cl_movespeedkey);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_gravity", "sv_gravity", &sv_gravity);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_stopspeed", "sv_stopspeed", &sv_stopspeed);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_maxspeed", "sv_maxspeed", &sv_maxspeed);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_noclipspeed", "sv_noclipspeed", &sv_noclipspeed);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_accelerate", "sv_accelerate", &sv_accelerate);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_airaccelerate", "sv_airaccelerate", &sv_airaccelerate);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_wateraccelerate", "sv_wateraccelerate", &sv_wateraccelerate);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_friction", "sv_friction", &sv_friction);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_edgefriction", "sv_edgefriction", &sv_edgefriction);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_waterfriction", "sv_waterfriction", &sv_waterfriction);
-			//AddFloatToCustomConfig(&aCVarConfig, "sv_entgravity", "sv_entgravity", &sv_entgravity);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_bounce", "sv_bounce", &sv_bounce);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_stepsize", "sv_stepsize", &sv_stepsize);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_maxvelocity", "sv_maxvelocity", &sv_maxvelocity);
-			//AddBoolToCustomConfig(&aCVarConfig, "mp_footsteps", "mp_footsteps", &mp_footsteps);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_rollangle", "sv_rollangle", &sv_rollangle);
-			AddFloatToCustomConfig(&aCVarConfig, "sv_rollspeed", "sv_rollspeed", &sv_rollspeed);
+		if (aCVarConfigHL1.empty()) {
+			AddFloatToCustomConfig(&aCVarConfigHL1, "cl_bob", "cl_bob", &CVar_HL1::cl_bob);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "cl_bobcycle", "cl_bobcycle", &CVar_HL1::cl_bobcycle);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "cl_bobup", "cl_bobup", &CVar_HL1::cl_bobup);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "cl_forwardspeed", "cl_forwardspeed", &CVar_HL1::cl_forwardspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "cl_sidespeed", "cl_sidespeed", &CVar_HL1::cl_sidespeed);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "cl_upspeed", "cl_upspeed", &CVar_HL1::cl_upspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "cl_movespeedkey", "cl_movespeedkey", &CVar_HL1::cl_movespeedkey);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_gravity", "sv_gravity", &CVar_HL1::sv_gravity);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_stopspeed", "sv_stopspeed", &CVar_HL1::sv_stopspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_maxspeed", "sv_maxspeed", &CVar_HL1::sv_maxspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_noclipspeed", "sv_noclipspeed", &CVar_HL1::sv_noclipspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_accelerate", "sv_accelerate", &CVar_HL1::sv_accelerate);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_airaccelerate", "sv_airaccelerate", &CVar_HL1::sv_airaccelerate);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_wateraccelerate", "sv_wateraccelerate", &CVar_HL1::sv_wateraccelerate);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_friction", "sv_friction", &CVar_HL1::sv_friction);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_edgefriction", "sv_edgefriction", &CVar_HL1::sv_edgefriction);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_waterfriction", "sv_waterfriction", &CVar_HL1::sv_waterfriction);
+			//AddFloatToCustomConfig(&aCVarConfigHL1, "sv_entgravity", "sv_entgravity", &CVar_HL1::sv_entgravity);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_bounce", "sv_bounce", &CVar_HL1::sv_bounce);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_stepsize", "sv_stepsize", &CVar_HL1::sv_stepsize);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_maxvelocity", "sv_maxvelocity", &CVar_HL1::sv_maxvelocity);
+			//AddBoolToCustomConfig(&aCVarConfigHL1, "mp_footsteps", "mp_footsteps", &CVar_HL1::mp_footsteps);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_rollangle", "sv_rollangle", &CVar_HL1::sv_rollangle);
+			AddFloatToCustomConfig(&aCVarConfigHL1, "sv_rollspeed", "sv_rollspeed", &CVar_HL1::sv_rollspeed);
+		}
+		if (aCVarConfigHL2.empty()) {
+			AddFloatToCustomConfig(&aCVarConfigHL2, "cl_bob", "cl_bob", &CVar_HL2::cl_bob);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "cl_bobcycle", "cl_bobcycle", &CVar_HL2::cl_bobcycle);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "cl_bobup", "cl_bobup", &CVar_HL2::cl_bobup);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "cl_forwardspeed", "cl_forwardspeed", &CVar_HL2::cl_forwardspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "cl_sidespeed", "cl_sidespeed", &CVar_HL2::cl_sidespeed);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "cl_upspeed", "cl_upspeed", &CVar_HL2::cl_upspeed);
+			//AddFloatToCustomConfig(&aCVarConfigHL2, "cl_movespeedkey", "cl_movespeedkey", &CVar_HL2::cl_movespeedkey);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_gravity", "sv_gravity", &CVar_HL2::sv_gravity);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_stopspeed", "sv_stopspeed", &CVar_HL2::sv_stopspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_maxspeed", "sv_maxspeed", &CVar_HL2::sv_maxspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_noclipspeed", "sv_noclipspeed", &CVar_HL2::sv_noclipspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_noclipaccelerate", "sv_noclipaccelerate", &CVar_HL2::sv_noclipaccelerate);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_accelerate", "sv_accelerate", &CVar_HL2::sv_accelerate);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_airaccelerate", "sv_airaccelerate", &CVar_HL2::sv_airaccelerate);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_wateraccelerate", "sv_wateraccelerate", &CVar_HL2::sv_wateraccelerate);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_friction", "sv_friction", &CVar_HL2::sv_friction);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_edgefriction", "sv_edgefriction", &CVar_HL2::sv_edgefriction);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_waterfriction", "sv_waterfriction", &CVar_HL2::sv_waterfriction);
+			//AddFloatToCustomConfig(&aCVarConfigHL2, "sv_entgravity", "sv_entgravity", &CVar_HL2::sv_entgravity);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_bounce", "sv_bounce", &CVar_HL2::sv_bounce);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_stepsize", "sv_stepsize", &CVar_HL2::sv_stepsize);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_maxvelocity", "sv_maxvelocity", &CVar_HL2::sv_maxvelocity);
+			//AddBoolToCustomConfig(&aCVarConfigHL2, "mp_footsteps", "mp_footsteps", &CVar_HL2::mp_footsteps);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_rollangle", "sv_rollangle", &CVar_HL2::sv_rollangle);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_rollspeed", "sv_rollspeed", &CVar_HL2::sv_rollspeed);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "HL2_NORM_SPEED", "HL2_NORM_SPEED", &CVar_HL2::HL2_NORM_SPEED);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "HL2_SPRINT_SPEED", "HL2_SPRINT_SPEED", &CVar_HL2::HL2_SPRINT_SPEED);
 		}
 	}
 
@@ -2302,9 +3476,21 @@ namespace FreemanAPI {
 		if (DrawMenuOption("Parameters", "Adjust console variables")) {
 			ChloeMenuLib::BeginMenu();
 
-			for (auto& value : aCVarConfig) {
-				value.DrawValueEditor();
+			if (DrawMenuOption("HL1 Movement", "Adjust HL1 console variables")) {
+				ChloeMenuLib::BeginMenu();
+				for (auto& value : aCVarConfigHL1) {
+					value.DrawValueEditor();
+				}
+				ChloeMenuLib::EndMenu();
 			}
+			if (DrawMenuOption("HL2 Movement", "Adjust HL2 console variables")) {
+				ChloeMenuLib::BeginMenu();
+				for (auto& value : aCVarConfigHL2) {
+					value.DrawValueEditor();
+				}
+				ChloeMenuLib::EndMenu();
+			}
+
 			for (auto& value : aCustomCVarConfig) {
 				value.DrawValueEditor();
 			}
@@ -2342,8 +3528,11 @@ namespace FreemanAPI {
 		for (auto& value : aCustomAdvancedConfig) {
 			value.ReadFromConfig(config, "advanced");
 		}
-		for (auto& value : aCVarConfig) {
-			value.ReadFromConfig(config, "cvars");
+		for (auto& value : aCVarConfigHL1) {
+			value.ReadFromConfig(config, "hl1");
+		}
+		for (auto& value : aCVarConfigHL2) {
+			value.ReadFromConfig(config, "hl2");
 		}
 		for (auto& value : aCustomCVarConfig) {
 			value.ReadFromConfig(config, "cvars");

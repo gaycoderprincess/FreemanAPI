@@ -110,6 +110,12 @@ extern "C" __declspec(dllexport) bool __cdecl FreemanAPI_GetIsEnabled() {
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetIsEnabled(bool on) {
 	FreemanAPI::bEnabled = on;
 }
+extern "C" __declspec(dllexport) bool __cdecl FreemanAPI_GetIsHL2Mode() {
+	return FreemanAPI::bHL2Mode;
+}
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetIsHL2Mode(bool on) {
+	FreemanAPI::bHL2Mode = on;
+}
 extern "C" __declspec(dllexport) double* __cdecl FreemanAPI_GetPlayerBBoxMin() {
 	return &FreemanAPI::pmove->player_mins[FreemanAPI::pmove->usehull].x;
 }
@@ -152,6 +158,36 @@ extern "C" __declspec(dllexport) int* __cdecl FreemanAPI_GetConfigInt(const char
 }
 extern "C" __declspec(dllexport) float* __cdecl FreemanAPI_GetConfigFloat(const char* label) {
 	auto config = FreemanAPI::FindConfigValue(label);
+	if (!config) return nullptr;
+	return config->fValue;
+}
+extern "C" __declspec(dllexport) bool* __cdecl FreemanAPI_GetConfigBooleanHL1(const char* label) {
+	auto config = FreemanAPI::FindConfigValueHL1(label);
+	if (!config) return nullptr;
+	return config->bValue;
+}
+extern "C" __declspec(dllexport) int* __cdecl FreemanAPI_GetConfigIntHL1(const char* label) {
+	auto config = FreemanAPI::FindConfigValueHL1(label);
+	if (!config) return nullptr;
+	return config->iValue;
+}
+extern "C" __declspec(dllexport) float* __cdecl FreemanAPI_GetConfigFloatHL1(const char* label) {
+	auto config = FreemanAPI::FindConfigValueHL1(label);
+	if (!config) return nullptr;
+	return config->fValue;
+}
+extern "C" __declspec(dllexport) bool* __cdecl FreemanAPI_GetConfigBooleanHL2(const char* label) {
+	auto config = FreemanAPI::FindConfigValueHL2(label);
+	if (!config) return nullptr;
+	return config->bValue;
+}
+extern "C" __declspec(dllexport) int* __cdecl FreemanAPI_GetConfigIntHL2(const char* label) {
+	auto config = FreemanAPI::FindConfigValueHL2(label);
+	if (!config) return nullptr;
+	return config->iValue;
+}
+extern "C" __declspec(dllexport) float* __cdecl FreemanAPI_GetConfigFloatHL2(const char* label) {
+	auto config = FreemanAPI::FindConfigValueHL2(label);
 	if (!config) return nullptr;
 	return config->fValue;
 }

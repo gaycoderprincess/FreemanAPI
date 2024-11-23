@@ -57,6 +57,14 @@ namespace FreemanAPI {
 		dest.z = start.z + scale * direction.z;
 	}
 
+	inline float SimpleSpline(const float value) {
+		float valueDoubled = value * 2;
+		float valueSquared = value * value;
+
+		// Nice little ease-in, ease-out spline-like curve
+		return (3 * valueSquared) - (valueDoubled * valueSquared);
+	}
+
 	void AngleVectors(const NyaVec3Double& angles, NyaVec3Double& fwd, NyaVec3Double& right, NyaVec3Double& up) {
 		auto anglesRad = angles * (std::numbers::pi / 180.0);
 		anglesRad[PITCH] *= -1;
@@ -74,6 +82,11 @@ namespace FreemanAPI {
 		up.x = (*(NyaVec3*)&mat[UP*4]).x;
 		up.y = (*(NyaVec3*)&mat[UP*4]).y;
 		up.z = (*(NyaVec3*)&mat[UP*4]).z;
+	}
+
+	void AngleVectors(const NyaVec3Double& angles, NyaVec3Double& fwd) {
+		NyaVec3Double right, up;
+		AngleVectors(angles, fwd, right, up);
 	}
 
 	NyaVec3Double vec3_origin = {0,0,0};

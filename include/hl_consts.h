@@ -4,13 +4,14 @@ namespace FreemanAPI {
 	//const int MAX_MOVEENTS = 64;
 	const int MAX_CLIP_PLANES = 5;
 
+	// movement consts
 	const float TIME_TO_DUCK 				= 0.4;
 	const int VEC_HULL_MIN					= -36;
 	const int VEC_HULL_MAX					= 36;
-	const int VEC_VIEW						= 28;
+	const int VEC_VIEW_HL1					= 28;
 	const int VEC_DUCK_HULL_MIN				= -18;
 	const int VEC_DUCK_HULL_MAX				= 18;
-	const int VEC_DUCK_VIEW					= 12;
+	const int VEC_DUCK_VIEW_HL1				= 12;
 	const int PM_DEAD_VIEWHEIGHT			= -8;
 	const int PLAYER_FATAL_FALL_SPEED		= 1024;	// approx 60 feet
 	const int PLAYER_MAX_SAFE_FALL_SPEED	= 580;	// approx 20 feet
@@ -23,21 +24,26 @@ namespace FreemanAPI {
 	const int WJ_HEIGHT						= 8;
 	const float BUNNYJUMP_MAX_SPEED_FACTOR	= 1.7f; // Only allow bunny jumping up to 1.7x server / player maxspeed setting
 
-	// edict->movetype values
-	const int MOVETYPE_NONE			= 0;		// never moves
-	const int MOVETYPE_ANGLENOCLIP	= 1;
-	const int MOVETYPE_ANGLECLIP	= 2;
-	const int MOVETYPE_WALK			= 3;		// Player only - moving on the ground
-	const int MOVETYPE_STEP			= 4;		// gravity, special edge handling -- monsters use this
-	const int MOVETYPE_FLY			= 5;		// No gravity, but still collides with stuff
-	const int MOVETYPE_TOSS			= 6;		// gravity/collisions
-	const int MOVETYPE_PUSH			= 7;		// no clip to world, push and crush
-	const int MOVETYPE_NOCLIP		= 8;		// No gravity, no collisions, still do velocity/avelocity
-	const int MOVETYPE_FLYMISSILE	= 9;		// extra size to monsters
-	const int MOVETYPE_BOUNCE		= 10;		// Just like Toss, but reflect velocity when contacting surfaces
-	const int MOVETYPE_BOUNCEMISSILE= 11;		// bounce w/o gravity
-	const int MOVETYPE_FOLLOW		= 12;		// track movement of aiment
-	const int MOVETYPE_PUSHSTEP		= 13;		// BSP model that needs physics/world collisions (uses nearest hull for world collision)
+	// HL2 consts
+	const float TIME_TO_DUCK_MS					= 400.0f;
+	const float TIME_TO_UNDUCK					= 0.2;
+	const float TIME_TO_UNDUCK_MS				= 200.0f;
+	const float GAMEMOVEMENT_DUCK_TIME			= 1000.0f; // ms
+	const float GAMEMOVEMENT_JUMP_TIME			= 510.0f; // ms approx - based on the 21 unit height jump
+	const float GAMEMOVEMENT_JUMP_HEIGHT		= 21.0f; // units
+	const float GAMEMOVEMENT_TIME_TO_UNDUCK		= (TIME_TO_UNDUCK * 1000.0f); // ms
+	const float GAMEMOVEMENT_TIME_TO_UNDUCK_INV	= (GAMEMOVEMENT_DUCK_TIME - GAMEMOVEMENT_TIME_TO_UNDUCK);
+	const int VEC_VIEW_HL2						= 64;
+	const int VEC_DUCK_VIEW_HL2					= 28;
+	const float PLAYER_FATAL_FALL_SPEED_HL2			= 922.5f; // approx 60 feet sqrt( 2 * gravity * 60 * 12 )
+	const float PLAYER_MAX_SAFE_FALL_SPEED_HL2		= 526.5f; // approx 20 feet sqrt( 2 * gravity * 20 * 12 )
+	const float PLAYER_LAND_ON_FLOATING_OBJECT_HL2	= 173; // Can fall another 173 in/sec without getting hurt
+	const float PLAYER_MIN_BOUNCE_SPEED_HL2			= 173;
+	const float PLAYER_FALL_PUNCH_THRESHOLD_HL2		= 303.0f; // // won't punch player's screen/make scrape noise unless player falling at least this fast - at least a 76" fall (sqrt( 2 * g * 76))
+	const float NON_JUMP_VELOCITY 					= 140.0f; // NOTE: 145 is a jump.
+	const float PUNCH_DAMPING						= 9.0f;		// bigger number makes the response more damped, smaller is less damped
+																// currently the system will overshoot, with larger damping values it won't
+	const float PUNCH_SPRING_CONSTANT				= 65.0f;	// bigger number increases the speed at which the view corrects
 
 	// edict->flags
 	const int FL_FLY				= (1<<0);	// Changes the SV_Movestep() behavior to not need to be on ground
@@ -84,26 +90,59 @@ namespace FreemanAPI {
 	const int IN_RUN      			= (1 << 12);
 	const int IN_RELOAD				= (1 << 13);
 	const int IN_ALT1				= (1 << 14);
-	const int IN_SCORE				= (1 << 15);	// Used by client.dll for when scoreboard is held down
+	const int IN_SPEED				= (1 << 15);
 
 	// texture types
-	const int CHAR_TEX_CONCRETE		= 'C';
-	const int CHAR_TEX_METAL		= 'M';
-	const int CHAR_TEX_DIRT			= 'D';
-	const int CHAR_TEX_VENT			= 'V';
-	const int CHAR_TEX_GRATE		= 'G';
-	const int CHAR_TEX_TILE			= 'T';
-	const int CHAR_TEX_SLOSH		= 'S';
-	const int CHAR_TEX_WOOD			= 'W';
-	const int CHAR_TEX_COMPUTER		= 'P';
-	const int CHAR_TEX_GLASS		= 'Y';
-	const int CHAR_TEX_FLESH		= 'F';
-	const int CHAR_TEX_WADE			= 'Z';
-	const int CHAR_TEX_LADDER		= 'L';
+	enum {
+		CHAR_TEX_CONCRETE,
+		CHAR_TEX_METAL,
+		CHAR_TEX_DIRT,
+		CHAR_TEX_VENT,
+		CHAR_TEX_GRATE,
+		CHAR_TEX_TILE,
+		CHAR_TEX_SLOSH,
+		CHAR_TEX_WOOD,
+		CHAR_TEX_COMPUTER,
+		CHAR_TEX_GLASS,
+		CHAR_TEX_FLESH,
+		CHAR_TEX_WADE,
+		CHAR_TEX_LADDER,
+		CHAR_TEX_SAND,
+		CHAR_TEX_MUD,
+		CHAR_TEX_GRASS,
+		CHAR_TEX_GRAVEL,
+		CHAR_TEX_CHAINLINK,
+	};
+
+	// edict->movetype values
+	enum {
+		MOVETYPE_NONE			= 0,		// never moves
+		MOVETYPE_ANGLENOCLIP	= 1,
+		MOVETYPE_ANGLECLIP		= 2,
+		MOVETYPE_WALK			= 3,		// Player only - moving on the ground
+		MOVETYPE_STEP			= 4,		// gravity, special edge handling -- monsters use this
+		MOVETYPE_FLY			= 5,		// No gravity, but still collides with stuff
+		MOVETYPE_TOSS			= 6,		// gravity/collisions
+		MOVETYPE_PUSH			= 7,		// no clip to world, push and crush
+		MOVETYPE_NOCLIP			= 8,		// No gravity, no collisions, still do velocity/avelocity
+		MOVETYPE_FLYMISSILE		= 9,		// extra size to monsters
+		MOVETYPE_BOUNCE			= 10,		// Just like Toss, but reflect velocity when contacting surfaces
+		MOVETYPE_BOUNCEMISSILE	= 11,		// bounce w/o gravity
+		MOVETYPE_FOLLOW			= 12,		// track movement of aiment
+		MOVETYPE_PUSHSTEP		= 13,		// BSP model that needs physics/world collisions (uses nearest hull for world collision)
+	};
 
 	// water contents - changed for simplicity
-	const int CONTENTS_LAVA			= 0;
-	const int CONTENTS_SLIME		= 1;
-	const int CONTENTS_WATER		= 2;
-	const int CONTENTS_EMPTY		= 3;
+	enum {
+		CONTENTS_LAVA		= 0,
+		CONTENTS_SLIME		= 1,
+		CONTENTS_WATER		= 2,
+		CONTENTS_EMPTY		= 3,
+	};
+
+	enum {
+		SPEED_CROPPED_RESET = 0,
+		SPEED_CROPPED_DUCK = 1,
+		SPEED_CROPPED_WEAPON = 2,
+	};
 }
