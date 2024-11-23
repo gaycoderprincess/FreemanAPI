@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <format>
+#include "toml++/toml.hpp"
 
 #include "nya_commonmath.h"
 

@@ -2293,10 +2293,21 @@ namespace FreemanAPI {
 			ValueEditorMenu(bSmartVelocityCap, "Better sv_maxvelocity");
 			ValueEditorMenu(bNoclipKey, "Noclip Key");
 
+			for (auto& value : aCustomBehaviorConfig) {
+				if (value.bValue) ValueEditorMenu(*value.bValue, value.name);
+				if (value.iValue) ValueEditorMenu(*value.iValue, value.name);
+				if (value.fValue) ValueEditorMenu(*value.fValue, value.name);
+			}
+
 			if (DrawMenuOption("Advanced")) {
 				ChloeMenuLib::BeginMenu();
 				ValueEditorMenu(nColDensity, "Collision Density");
 				ValueEditorMenu(nPhysicsSteps, "Physics Steps");
+				for (auto& value : aCustomAdvancedConfig) {
+					if (value.bValue) ValueEditorMenu(*value.bValue, value.name);
+					if (value.iValue) ValueEditorMenu(*value.iValue, value.name);
+					if (value.fValue) ValueEditorMenu(*value.fValue, value.name);
+				}
 				ChloeMenuLib::EndMenu();
 			}
 
@@ -2333,6 +2344,12 @@ namespace FreemanAPI {
 			ValueEditorMenu(cl_bobcycle, "cl_bobcycle");
 			ValueEditorMenu(cl_bobup, "cl_bobup");
 
+			for (auto& value : aCustomCVarConfig) {
+				if (value.bValue) ValueEditorMenu(*value.bValue, value.name);
+				if (value.iValue) ValueEditorMenu(*value.iValue, value.name);
+				if (value.fValue) ValueEditorMenu(*value.fValue, value.name);
+			}
+
 			ChloeMenuLib::EndMenu();
 		}
 
@@ -2346,5 +2363,75 @@ namespace FreemanAPI {
 			DrawMenuOption(std::format("{}", lastConsoleMsg));
 			ChloeMenuLib::EndMenu();
 		}
+	}
+
+	std::string sConfigName = "FreemanAPI_gcp.toml";
+
+	void LoadConfig() {
+		auto config = toml::parse_file(sConfigName);
+
+		for (auto& value : aCustomBehaviorConfig) {
+			if (value.configName.empty()) continue;
+
+			if (value.bValue) *value.bValue = config["game"][value.configName].value_or(*value.bValue);
+			if (value.iValue) *value.iValue = config["game"][value.configName].value_or(*value.iValue);
+			if (value.fValue) *value.fValue = config["game"][value.configName].value_or(*value.fValue);
+		}
+
+		bEnabled = config["main"]["enabled"].value_or(bEnabled);
+		bCanLongJump = config["main"]["longjump"].value_or(bCanLongJump);
+		bAutoHop = config["main"]["autohop"].value_or(bAutoHop);
+		bABH = config["main"]["abh"].value_or(bABH);
+		bABHMixed = config["main"]["abh_mixed"].value_or(bABHMixed);
+		bBhopCap = config["main"]["bhop_cap"].value_or(bBhopCap);
+		bSmartVelocityCap = config["main"]["better_maxvelocity"].value_or(bSmartVelocityCap);
+		bNoclipKey = config["main"]["noclip_toggle"].value_or(bNoclipKey);
+
+		for (auto& value : aCustomAdvancedConfig) {
+			if (value.configName.empty()) continue;
+
+			if (value.bValue) *value.bValue = config["advanced"][value.configName].value_or(*value.bValue);
+			if (value.iValue) *value.iValue = config["advanced"][value.configName].value_or(*value.iValue);
+			if (value.fValue) *value.fValue = config["advanced"][value.configName].value_or(*value.fValue);
+		}
+
+		nPhysicsSteps = config["advanced"]["physics_steps"].value_or(nPhysicsSteps);
+		nColDensity = config["advanced"]["collision_density"].value_or(nColDensity);
+
+		for (auto& value : aCustomCVarConfig) {
+			if (value.configName.empty()) continue;
+
+			if (value.bValue) *value.bValue = config["cvars"][value.configName].value_or(*value.bValue);
+			if (value.iValue) *value.iValue = config["cvars"][value.configName].value_or(*value.iValue);
+			if (value.fValue) *value.fValue = config["cvars"][value.configName].value_or(*value.fValue);
+		}
+
+		if (EXT_fov) *EXT_fov = config["cvars"]["fov_desired"].value_or(*EXT_fov);
+		if (EXT_sensitivity) *EXT_sensitivity = config["cvars"]["sensitivity"].value_or(*EXT_sensitivity);
+		if (EXT_volume) *EXT_volume = config["cvars"]["volume"].value_or(*EXT_volume);
+		cl_bob = config["cvars"]["cl_bob"].value_or(cl_bob);
+		cl_bobcycle = config["cvars"]["cl_bobcycle"].value_or(cl_bobcycle);
+		cl_bobup = config["cvars"]["cl_bobup"].value_or(cl_bobup);
+		cl_forwardspeed = config["cvars"]["cl_forwardspeed"].value_or(cl_forwardspeed);
+		cl_sidespeed = config["cvars"]["cl_sidespeed"].value_or(cl_sidespeed);
+		cl_upspeed = config["cvars"]["cl_upspeed"].value_or(cl_upspeed);
+		cl_movespeedkey = config["cvars"]["cl_movespeedkey"].value_or(cl_movespeedkey);
+		sv_gravity = config["cvars"]["sv_gravity"].value_or(sv_gravity);
+		sv_stopspeed = config["cvars"]["sv_stopspeed"].value_or(sv_stopspeed);
+		sv_maxspeed = config["cvars"]["sv_maxspeed"].value_or(sv_maxspeed);
+		sv_noclipspeed = config["cvars"]["sv_noclipspeed"].value_or(sv_noclipspeed);
+		sv_accelerate = config["cvars"]["sv_accelerate"].value_or(sv_accelerate);
+		sv_airaccelerate = config["cvars"]["sv_airaccelerate"].value_or(sv_airaccelerate);
+		sv_wateraccelerate = config["cvars"]["sv_wateraccelerate"].value_or(sv_wateraccelerate);
+		sv_friction = config["cvars"]["sv_friction"].value_or(sv_friction);
+		sv_edgefriction = config["cvars"]["sv_edgefriction"].value_or(sv_edgefriction);
+		sv_waterfriction = config["cvars"]["sv_waterfriction"].value_or(sv_waterfriction);
+		//sv_entgravity = config["cvars"]["sv_entgravity"].value_or(sv_entgravity);
+		sv_bounce = config["cvars"]["sv_bounce"].value_or(sv_bounce);
+		sv_stepsize = config["cvars"]["sv_stepsize"].value_or(sv_stepsize);
+		sv_maxvelocity = config["cvars"]["sv_maxvelocity"].value_or(sv_maxvelocity);
+		//mp_footsteps = config["cvars"]["mp_footsteps"].value_or(mp_footsteps);
+		sv_rollangle = config["cvars"]["sv_rollangle"].value_or(sv_rollangle);
+		sv_rollspeed = config["cvars"]["sv_rollspeed"].value_or(sv_rollspeed);
 	}
 }

@@ -117,3 +117,19 @@ extern "C" __declspec(dllexport) double* __cdecl FreemanAPI_GetPlayerBBoxMin() {
 extern "C" __declspec(dllexport) double* __cdecl FreemanAPI_GetPlayerBBoxMax() {
 	return &FreemanAPI::pmove->player_maxs[FreemanAPI::pmove->usehull].x;
 }
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_RegisterCustomBoolean(const char* label, const char* configLabel, bool* ptr, int category) {
+	FreemanAPI::AddBoolToCustomConfig(FreemanAPI::GetCustomConfig(category), label, configLabel, ptr);
+}
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_RegisterCustomInt(const char* label, const char* configLabel, int* ptr, int category) {
+	FreemanAPI::AddIntToCustomConfig(FreemanAPI::GetCustomConfig(category), label, configLabel, ptr);
+}
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_RegisterCustomFloat(const char* label, const char* configLabel, float* ptr, int category) {
+	FreemanAPI::AddFloatToCustomConfig(FreemanAPI::GetCustomConfig(category), label, configLabel, ptr);
+}
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetConfigName(const char* name) {
+	if (!name) return;
+	FreemanAPI::sConfigName = name;
+}
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_LoadConfig() {
+	FreemanAPI::LoadConfig();
+}

@@ -1,5 +1,74 @@
 // HL to game integration
 namespace FreemanAPI {
+	struct tExternalConfigValue {
+		bool* bValue = nullptr;
+		int* iValue = nullptr;
+		float* fValue = nullptr;
+		std::string name;
+		std::string configName;
+	};
+	std::vector<tExternalConfigValue> aCustomBehaviorConfig;
+	std::vector<tExternalConfigValue> aCustomCVarConfig;
+	std::vector<tExternalConfigValue> aCustomAdvancedConfig;
+	std::vector<tExternalConfigValue>* GetCustomConfig(int category) {
+		std::vector<FreemanAPI::tExternalConfigValue>* vec = nullptr;
+		switch (category) {
+			case 0:
+			default:
+				vec = &FreemanAPI::aCustomBehaviorConfig;
+				break;
+			case 1:
+				vec = &FreemanAPI::aCustomCVarConfig;
+				break;
+			case 2:
+				vec = &FreemanAPI::aCustomAdvancedConfig;
+				break;
+		}
+		return vec;
+	}
+	void AddBoolToCustomConfig(std::vector<FreemanAPI::tExternalConfigValue>* vec, const char* label, const char* configLabel, bool* ptr) {
+		if (!vec) return;
+		if (!label) return;
+		if (!ptr) return;
+
+		for (auto& value : *vec) {
+			if (value.bValue == ptr) return;
+		}
+		FreemanAPI::tExternalConfigValue value;
+		value.name = label;
+		if (configLabel) value.configName = configLabel;
+		value.bValue = ptr;
+		vec->push_back(value);
+	}
+	void AddIntToCustomConfig(std::vector<FreemanAPI::tExternalConfigValue>* vec, const char* label, const char* configLabel, int* ptr) {
+		if (!vec) return;
+		if (!label) return;
+		if (!ptr) return;
+
+		for (auto& value : *vec) {
+			if (value.iValue == ptr) return;
+		}
+		FreemanAPI::tExternalConfigValue value;
+		value.name = label;
+		if (configLabel) value.configName = configLabel;
+		value.iValue = ptr;
+		vec->push_back(value);
+	}
+	void AddFloatToCustomConfig(std::vector<FreemanAPI::tExternalConfigValue>* vec, const char* label, const char* configLabel, float* ptr) {
+		if (!vec) return;
+		if (!label) return;
+		if (!ptr) return;
+
+		for (auto& value : *vec) {
+			if (value.fValue == ptr) return;
+		}
+		FreemanAPI::tExternalConfigValue value;
+		value.name = label;
+		if (configLabel) value.configName = configLabel;
+		value.fValue = ptr;
+		vec->push_back(value);
+	}
+
 	auto EXT_PlayGameSound = (void(*)(const char*, float))nullptr;
 	auto EXT_GetGamePlayerDead = (bool(*)())nullptr;
 	auto EXT_GetGamePlayerPosition = (void(*)(double*))nullptr;

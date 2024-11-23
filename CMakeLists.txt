@@ -17,6 +17,7 @@ add_library(FreemanAPI SHARED
         ../nya-common/nya_commontimer.cpp
         main.cpp)
 target_include_directories(FreemanAPI PUBLIC ../nya-common)
+target_include_directories(FreemanAPI PUBLIC ../nya-common/3rdparty)
 target_include_directories(FreemanAPI PUBLIC ../FlatOutUCMenuLib/include)
 target_link_options(FreemanAPI PRIVATE "-Wl,--exclude-all-symbols")
 set_target_properties(FreemanAPI PROPERTIES PREFIX "")

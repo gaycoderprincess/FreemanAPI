@@ -257,4 +257,36 @@ namespace FreemanAPI {
 		if (!funcPtr) return nullptr;
 		return funcPtr();
 	}
+
+	// 0 - behavior, 1 - cvars, 2 - advanced
+	// only purpose is to add something custom to the chloe menu and the config reader
+	void RegisterCustomBoolean(const char* label, const char* configLabel, bool* ptr, int category) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(const char*, const char*, bool*, int)>("FreemanAPI_RegisterCustomBoolean");
+		if (!funcPtr) return;
+		return funcPtr(label, configLabel, ptr, category);
+	}
+
+	void RegisterCustomInt(const char* label, const char* configLabel, int* ptr, int category) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(const char*, const char*, int*, int)>("FreemanAPI_RegisterCustomInt");
+		if (!funcPtr) return;
+		return funcPtr(label, configLabel, ptr, category);
+	}
+
+	void RegisterCustomFloat(const char* label, const char* configLabel, float* ptr, int category) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(const char*, const char*, float*, int)>("FreemanAPI_RegisterCustomFloat");
+		if (!funcPtr) return;
+		return funcPtr(label, configLabel, ptr, category);
+	}
+
+	void SetConfigName(const char* name) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(const char*)>("FreemanAPI_SetConfigName");
+		if (!funcPtr) return;
+		return funcPtr(name);
+	}
+
+	void LoadConfig() {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)()>("FreemanAPI_LoadConfig");
+		if (!funcPtr) return;
+		return funcPtr();
+	}
 }
