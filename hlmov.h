@@ -2329,12 +2329,11 @@ namespace FreemanAPI {
 		if (aBehaviorConfig.empty()) FillConfig();
 
 		auto config = toml::parse_file(sConfigName);
-
 		for (auto& value : aBehaviorConfig) {
-			value.ReadFromConfig(config, "game");
+			value.ReadFromConfig(config, "main");
 		}
 		for (auto& value : aCustomBehaviorConfig) {
-			value.ReadFromConfig(config, "game");
+			value.ReadFromConfig(config, "main");
 		}
 		for (auto& value : aAdvancedConfig) {
 			value.ReadFromConfig(config, "advanced");

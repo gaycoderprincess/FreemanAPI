@@ -66,6 +66,8 @@ namespace FreemanAPI {
 		}
 
 		void DrawValueEditor() const {
+			if (name.empty()) return;
+
 			if (bValue) ValueEditorMenu(*bValue, name);
 			if (iValue) ValueEditorMenu(*iValue, name);
 			if (fValue) ValueEditorMenu(*fValue, name);

@@ -21,42 +21,39 @@ namespace FreemanAPI {
 	}
 	void AddBoolToCustomConfig(std::vector<tConfigValue>* vec, const char* label, const char* configLabel, bool* ptr) {
 		if (!vec) return;
-		if (!label) return;
 		if (!ptr) return;
 
 		for (auto& value : *vec) {
 			if (value.bValue == ptr) return;
 		}
 		tConfigValue value;
-		value.name = label;
+		if (label) value.name = label;
 		if (configLabel) value.configName = configLabel;
 		value.bValue = ptr;
 		vec->push_back(value);
 	}
 	void AddIntToCustomConfig(std::vector<tConfigValue>* vec, const char* label, const char* configLabel, int* ptr) {
 		if (!vec) return;
-		if (!label) return;
 		if (!ptr) return;
 
 		for (auto& value : *vec) {
 			if (value.iValue == ptr) return;
 		}
 		tConfigValue value;
-		value.name = label;
+		if (label) value.name = label;
 		if (configLabel) value.configName = configLabel;
 		value.iValue = ptr;
 		vec->push_back(value);
 	}
 	void AddFloatToCustomConfig(std::vector<tConfigValue>* vec, const char* label, const char* configLabel, float* ptr) {
 		if (!vec) return;
-		if (!label) return;
 		if (!ptr) return;
 
 		for (auto& value : *vec) {
 			if (value.fValue == ptr) return;
 		}
 		tConfigValue value;
-		value.name = label;
+		if (label) value.name = label;
 		if (configLabel) value.configName = configLabel;
 		value.fValue = ptr;
 		vec->push_back(value);
