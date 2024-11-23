@@ -12,7 +12,7 @@ SET(CMAKE_CXX_STANDARD 20)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -masm=intel -s -static")
 
-add_compile_definitions(NYA_COMMON_NO_D3D NYA_HL_COL_FALLBACK)
+add_compile_definitions(NYA_COMMON_NO_D3D)
 add_library(FreemanAPI SHARED
         ../nya-common/nya_commontimer.cpp
         main.cpp)

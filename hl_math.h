@@ -1,5 +1,5 @@
 // HL math and unit conversions
-namespace HLMovement {
+namespace FreemanAPI {
 	inline double UnitsToMeters(double f) {
 		return f * 0.0254;
 	}

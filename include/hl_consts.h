@@ -1,5 +1,5 @@
 // HL game consts
-namespace HLMovement {
+namespace FreemanAPI {
 	//const int MAX_PHYSENTS = 600; 				// Must have room for all entities in the world.
 	//const int MAX_MOVEENTS = 64;
 	const int MAX_CLIP_PLANES = 5;

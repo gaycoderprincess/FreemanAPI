@@ -1,11 +1,11 @@
 #include "hl_cvars.h"
-#include "hl_consts.h"
+#include "include/hl_consts.h"
 #include "hl_config.h"
 #include "hl_types.h"
 #include "hl_math.h"
 #include "hl_game_ext.h"
 
-namespace HLMovement {
+namespace FreemanAPI {
 	pmtrace_t PointRaytrace(NyaVec3Double origin, NyaVec3Double end) {
 		if (bConvertUnits) {
 			for (int i = 0; i < 3; i++) {
@@ -23,7 +23,6 @@ namespace HLMovement {
 		return *trace;
 	}
 
-#ifndef NYA_HL_COL_FALLBACK
 	pmtrace_t PM_PlayerTrace(NyaVec3Double origin, NyaVec3Double end) {
 		if (bConvertUnits) {
 			for (int i = 0; i < 3; i++) {
@@ -57,7 +56,6 @@ namespace HLMovement {
 		}
 		return *trace;
 	}
-#endif
 
 	std::string lastConsoleMsg;
 
@@ -464,11 +462,12 @@ namespace HLMovement {
 			pmove->onground = -1;
 		} else {
 			// Try and move down.
-#ifdef NYA_HL_COL_FALLBACK
-			tr = GetTopFloorForBBox(point);
-#else
-			tr = PM_PlayerTraceDown(pmove->origin, point);
-#endif
+			if (IsUsingPlayerTraceFallback()) {
+				tr = GetTopFloorForBBox(point);
+			}
+			else {
+				tr = PM_PlayerTraceDown(pmove->origin, point);
+			}
 
 			fLastPlaneNormal = tr.plane.normal[UP];
 			// If we hit a steep plane, we are not on ground
@@ -486,12 +485,13 @@ namespace HLMovement {
 				pmove->waterjumptime = 0;
 				// If we could make the move, drop us down that 1 pixel
 				if (pmove->waterlevel < 2/* && !tr.startsolid && !tr.allsolid*/) {
-#ifdef NYA_HL_COL_FALLBACK
-					// hacked here to only use the endpos Y
-					pmove->origin[UP] = tr.endpos[UP];
-#else
-					VectorCopy (tr.endpos, pmove->origin);
-#endif
+					if (IsUsingPlayerTraceFallback()) {
+						// hacked here to only use the endpos Y
+						pmove->origin[UP] = tr.endpos[UP];
+					}
+					else {
+						VectorCopy(tr.endpos, pmove->origin);
+					}
 				}
 			}
 
@@ -749,23 +749,26 @@ namespace HLMovement {
 			}
 		}
 
-#ifdef NYA_HL_COL_FALLBACK
-		trace = GetBottomCeilingForBBox(newOrigin);
-		trace.startsolid = trace.ent != -1;
-#else
-		trace = PM_PlayerTrace(newOrigin, newOrigin);
-#endif
+		if (IsUsingPlayerTraceFallback()) {
+			trace = GetBottomCeilingForBBox(newOrigin);
+			trace.startsolid = trace.ent != -1;
+		}
+		else {
+			trace = PM_PlayerTrace(newOrigin, newOrigin);
+		}
 
 		if (!trace.startsolid) {
 			pmove->usehull = 0;
 
 			// Oh, no, changing hulls stuck us into something, try unsticking downward first.
-#ifdef NYA_HL_COL_FALLBACK
-			trace = GetBottomCeilingForBBox(newOrigin);
-			trace.startsolid = trace.ent != -1;
-#else
-			trace = PM_PlayerTrace(newOrigin, newOrigin);
-#endif
+			if (IsUsingPlayerTraceFallback()) {
+				trace = GetBottomCeilingForBBox(newOrigin);
+				trace.startsolid = trace.ent != -1;
+			}
+			else {
+				trace = PM_PlayerTrace(newOrigin, newOrigin);
+			}
+
 			if (trace.startsolid) {
 				// See if we are stuck?  If so, stay ducked with the duck hull until we have a clear spot
 				lastConsoleMsg = "unstick got stuck";
@@ -999,18 +1002,19 @@ namespace HLMovement {
 			start[UP] = pmove->origin[UP] + pmove->player_mins[pmove->usehull][UP];
 			stop[UP] = start[UP] - 34;
 
-			// todo - edgefriction is not implemented for the fallback
-#ifdef NYA_HL_COL_FALLBACK
-			friction = movevars->friction;
-#else
-			trace = PM_PlayerTrace(start, stop);
-
-			if (trace.fraction == 1.0f) {
-				friction = movevars->friction*movevars->edgefriction;
-			} else {
+			if (IsUsingPlayerTraceFallback()) {
+				// todo - edgefriction is not implemented for the fallback
 				friction = movevars->friction;
 			}
-#endif
+			else {
+				trace = PM_PlayerTrace(start, stop);
+
+				if (trace.fraction == 1.0f) {
+					friction = movevars->friction*movevars->edgefriction;
+				} else {
+					friction = movevars->friction;
+				}
+			}
 
 			friction *= pmove->friction;  // player friction?
 
@@ -1112,11 +1116,7 @@ namespace HLMovement {
 		float time_left, allFraction;
 		int	blocked;
 
-#ifdef NYA_HL_COL_FALLBACK
-		numbumps  = 1;
-#else
-		numbumps  = 4;           // Bump up to four times
-#endif
+		numbumps  = IsUsingPlayerTraceFallback() ? 1 : 4;	// Bump up to four times
 
 		blocked   = 0;           // Assume not blocked
 		numplanes = 0;           //  and not sliding along any planes
@@ -1136,11 +1136,12 @@ namespace HLMovement {
 			end = pmove->origin + pmove->velocity * time_left;
 
 			// See if we can make it from origin to end point.
-#ifdef NYA_HL_COL_FALLBACK
-			trace = GetClosestBBoxIntersection(pmove->origin, end);
-#else
-			trace = PM_PlayerTrace(pmove->origin, end);
-#endif
+			if (IsUsingPlayerTraceFallback()) {
+				trace = GetClosestBBoxIntersection(pmove->origin, end);
+			}
+			else {
+				trace = PM_PlayerTrace(pmove->origin, end);
+			}
 
 			allFraction += trace.fraction;
 			// If we started in a solid object, or we were in solid space
@@ -1341,20 +1342,20 @@ namespace HLMovement {
 			pmove->velocity += wishvel * accelspeed;
 		}
 
-#ifndef NYA_HL_COL_FALLBACK
-		// Now move
-		// assume it is a stair or a slope, so press down from stepheight above
-		VectorMA(pmove->origin, pmove->frametime, pmove->velocity, dest);
-		VectorCopy(dest, start);
-		start[UP] += movevars->stepsize + 1;
+		if (!IsUsingPlayerTraceFallback()) {
+			// Now move
+			// assume it is a stair or a slope, so press down from stepheight above
+			VectorMA(pmove->origin, pmove->frametime, pmove->velocity, dest);
+			VectorCopy(dest, start);
+			start[UP] += movevars->stepsize + 1;
 
-		trace = PM_PlayerTrace(start, dest);
+			trace = PM_PlayerTrace(start, dest);
 
-		if (!trace.startsolid && !trace.allsolid) { // walked up the step, so just keep result and exit
-			VectorCopy (trace.endpos, pmove->origin);
-			return;
+			if (!trace.startsolid && !trace.allsolid) { // walked up the step, so just keep result and exit
+				VectorCopy(trace.endpos, pmove->origin);
+				return;
+			}
 		}
-#endif
 
 		// Try moving straight along out normal path.
 		PM_FlyMove();
@@ -1499,11 +1500,12 @@ namespace HLMovement {
 		// first try moving directly to the next spot
 		VectorCopy(dest, start);
 
-#ifdef NYA_HL_COL_FALLBACK
-		trace = GetClosestBBoxIntersection(pmove->origin, dest);
-#else
-		trace = PM_PlayerTrace(pmove->origin, dest);
-#endif
+		if (IsUsingPlayerTraceFallback()) {
+			trace = GetClosestBBoxIntersection(pmove->origin, dest);
+		}
+		else {
+			trace = PM_PlayerTrace(pmove->origin, dest);
+		}
 
 		// If we made it all the way, then copy trace end
 		//  as new player position.
@@ -1536,11 +1538,12 @@ namespace HLMovement {
 		VectorCopy(pmove->origin, dest);
 		dest[UP] += movevars->stepsize;
 
-#ifdef NYA_HL_COL_FALLBACK
-		trace = GetClosestBBoxIntersection(pmove->origin, dest);
-#else
-		trace = PM_PlayerTrace(pmove->origin, dest);
-#endif
+		if (IsUsingPlayerTraceFallback()) {
+			trace = GetClosestBBoxIntersection(pmove->origin, dest);
+		}
+		else {
+			trace = PM_PlayerTrace(pmove->origin, dest);
+		}
 
 		// If we started okay and made it part of the way at least,
 		//  copy the results to the movement start position and then
@@ -1557,11 +1560,12 @@ namespace HLMovement {
 		VectorCopy(pmove->origin, dest);
 		dest[UP] -= movevars->stepsize;
 
-#ifdef NYA_HL_COL_FALLBACK
-		trace = GetClosestBBoxIntersection(pmove->origin, dest);
-#else
-		trace = PM_PlayerTrace(pmove->origin, dest);
-#endif
+		if (IsUsingPlayerTraceFallback()) {
+			trace = GetClosestBBoxIntersection(pmove->origin, dest);
+		}
+		else {
+			trace = PM_PlayerTrace(pmove->origin, dest);
+		}
 
 		// If we are not on the ground any more then
 		//  use the original movement attempt

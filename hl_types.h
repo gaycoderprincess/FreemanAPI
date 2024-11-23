@@ -1,10 +1,10 @@
 // HL game types
-namespace HLMovement {
+namespace FreemanAPI {
 	typedef int physent_t;
 
 	struct pmplane_t {
-		NyaVec3Double	normal;
-		float	dist;
+		NyaVec3Double normal;
+		float dist;
 	};
 
 	struct pmtrace_t {

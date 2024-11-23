@@ -1,5 +1,5 @@
 // HL to game integration
-namespace HLMovement {
+namespace FreemanAPI {
 	auto EXT_PlayGameSound = (void(*)(const char*, float))nullptr;
 	auto EXT_GetGamePlayerDead = (bool(*)())nullptr;
 	auto EXT_GetGamePlayerPosition = (void(*)(double*))nullptr;
@@ -10,6 +10,8 @@ namespace HLMovement {
 	auto EXT_SetGamePlayerViewAngle = (void(*)(const double*))nullptr;
 	auto EXT_GetPointContents = (int(*)(const double*))nullptr;
 	auto EXT_PointRaytrace = (pmtrace_t*(*)(const double*, const double*))nullptr;
+	auto EXT_PM_PlayerTrace = (pmtrace_t*(*)(const double*, const double*))nullptr;
+	auto EXT_PM_PlayerTraceDown = (pmtrace_t*(*)(const double*, const double*))nullptr;
 	auto EXT_GetGameMoveLeftRight = (float(*)())nullptr;
 	auto EXT_GetGameMoveFwdBack = (float(*)())nullptr;
 	auto EXT_GetGameMoveUpDown = (float(*)())nullptr;
@@ -84,9 +86,55 @@ namespace HLMovement {
 		trace.plane.dist = 9999;
 		trace.ent = -1;
 		trace.surfaceId = 0;
-		if (EXT_PointRaytrace) {
-			trace = *EXT_PointRaytrace(&_origin->x, &_end->x);
+		// fallback to regular PlayerTrace if there's no specific point trace func
+		auto func = EXT_PointRaytrace;
+		if (!func) func = EXT_PM_PlayerTrace;
+		if (func) {
+			trace = *func(&_origin->x, &_end->x);
 		}
 		return &trace;
+	}
+
+	pmtrace_t* PM_PlayerTraceGame(const NyaVec3Double* _origin, const NyaVec3Double* _end) {
+		static pmtrace_t trace;
+		trace.allsolid = false;
+		trace.startsolid = false;
+		trace.inopen = true;
+		trace.inwater = false;
+		trace.fraction = 1.0f;
+		trace.endpos = *_end;
+		trace.plane.normal = {0,0,0};
+		trace.plane.dist = 9999;
+		trace.ent = -1;
+		trace.surfaceId = 0;
+		if (EXT_PM_PlayerTrace) {
+			trace = *EXT_PM_PlayerTrace(&_origin->x, &_end->x);
+		}
+		return &trace;
+	}
+
+	pmtrace_t* PM_PlayerTraceDownGame(const NyaVec3Double* _origin, const NyaVec3Double* _end) {
+		static pmtrace_t trace;
+		trace.allsolid = false;
+		trace.startsolid = false;
+		trace.inopen = true;
+		trace.inwater = false;
+		trace.fraction = 1.0f;
+		trace.endpos = *_end;
+		trace.plane.normal = {0,0,0};
+		trace.plane.dist = 9999;
+		trace.ent = -1;
+		trace.surfaceId = 0;
+		// fallback to regular PlayerTrace if there's no specific down trace func
+		auto func = EXT_PM_PlayerTraceDown;
+		if (!func) func = EXT_PM_PlayerTrace;
+		if (func) {
+			trace = *func(&_origin->x, &_end->x);
+		}
+		return &trace;
+	}
+
+	bool IsUsingPlayerTraceFallback() {
+		return !EXT_PM_PlayerTrace;
 	}
 }

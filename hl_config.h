@@ -1,5 +1,5 @@
 // custom config
-namespace HLMovement {
+namespace FreemanAPI {
 	// ingame variable config
 	bool bEnabled = true;
 	bool bCanLongJump = false;

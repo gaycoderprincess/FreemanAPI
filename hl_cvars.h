@@ -1,5 +1,5 @@
 // HL game cvars
-namespace HLMovement {
+namespace FreemanAPI {
 	float cl_bob = 0.01;
 	float cl_bobcycle = 0.8;
 	float cl_bobup = 0.5;
