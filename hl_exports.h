@@ -55,15 +55,6 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_GetGameMoveRun
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_GetGameMoveUse(bool(*func)()) {
 	FreemanAPI::EXT_GetGameMoveUse = func;
 }
-extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_FOV(float* value) {
-	FreemanAPI::EXT_fov = value;
-}
-extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_Sensitivity(float* value) {
-	FreemanAPI::EXT_sensitivity = value;
-}
-extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_Volume(float* value) {
-	FreemanAPI::EXT_volume = value;
-}
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetIsZUp(bool on) {
 	if (on) {
 		NyaMat4x4::bZUp = true;
@@ -140,4 +131,19 @@ extern "C" __declspec(dllexport) float __cdecl FreemanAPI_GetPlayerVelocity2D() 
 	auto vel = FreemanAPI::pmove->velocity;
 	vel[FreemanAPI::UP] = 0;
 	return vel.length();
+}
+extern "C" __declspec(dllexport) bool* __cdecl FreemanAPI_GetConfigBoolean(const char* label) {
+	auto config = FreemanAPI::FindConfigValue(label);
+	if (!config) return nullptr;
+	return config->bValue;
+}
+extern "C" __declspec(dllexport) int* __cdecl FreemanAPI_GetConfigInt(const char* label) {
+	auto config = FreemanAPI::FindConfigValue(label);
+	if (!config) return nullptr;
+	return config->iValue;
+}
+extern "C" __declspec(dllexport) float* __cdecl FreemanAPI_GetConfigFloat(const char* label) {
+	auto config = FreemanAPI::FindConfigValue(label);
+	if (!config) return nullptr;
+	return config->fValue;
 }

@@ -166,24 +166,6 @@ namespace FreemanAPI {
 		funcPtr(func);
 	}
 
-	void Register_FOV(float* value) {
-		static auto funcPtr = GetFuncPtr<void(__cdecl*)(float*)>("FreemanAPI_Register_FOV");
-		if (!funcPtr) return;
-		funcPtr(value);
-	}
-
-	void Register_Sensitivity(float* value) {
-		static auto funcPtr = GetFuncPtr<void(__cdecl*)(float*)>("FreemanAPI_Register_Sensitivity");
-		if (!funcPtr) return;
-		funcPtr(value);
-	}
-
-	void Register_Volume(float* value) {
-		static auto funcPtr = GetFuncPtr<void(__cdecl*)(float*)>("FreemanAPI_Register_Volume");
-		if (!funcPtr) return;
-		funcPtr(value);
-	}
-
 	void SetIsZUp(bool value) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(bool)>("FreemanAPI_SetIsZUp");
 		if (!funcPtr) return;
@@ -259,7 +241,7 @@ namespace FreemanAPI {
 	}
 
 	// 0 - behavior, 1 - cvars, 2 - advanced
-	// only purpose is to add something custom to the chloe menu and the config reader
+	// add something custom to the chloe menu and the config reader
 	void RegisterCustomBoolean(const char* label, const char* configLabel, bool* ptr, int category) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(const char*, const char*, bool*, int)>("FreemanAPI_RegisterCustomBoolean");
 		if (!funcPtr) return;
@@ -300,5 +282,23 @@ namespace FreemanAPI {
 		static auto funcPtr = GetFuncPtr<float(__cdecl*)()>("FreemanAPI_GetPlayerVelocity2D");
 		if (!funcPtr) return 0;
 		return funcPtr();
+	}
+
+	bool* GetConfigBoolean(const char* label) {
+		static auto funcPtr = GetFuncPtr<bool*(__cdecl*)(const char*)>("FreemanAPI_GetConfigBoolean");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
+	}
+
+	int* GetConfigInt(const char* label) {
+		static auto funcPtr = GetFuncPtr<int*(__cdecl*)(const char*)>("FreemanAPI_GetConfigInt");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
+	}
+
+	float* GetConfigFloat(const char* label) {
+		static auto funcPtr = GetFuncPtr<float*(__cdecl*)(const char*)>("FreemanAPI_GetConfigFloat");
+		if (!funcPtr) return nullptr;
+		return funcPtr(label);
 	}
 }

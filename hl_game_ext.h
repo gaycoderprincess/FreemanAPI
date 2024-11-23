@@ -1,32 +1,25 @@
 // HL to game integration
 namespace FreemanAPI {
-	struct tExternalConfigValue {
-		bool* bValue = nullptr;
-		int* iValue = nullptr;
-		float* fValue = nullptr;
-		std::string name;
-		std::string configName;
-	};
-	std::vector<tExternalConfigValue> aCustomBehaviorConfig;
-	std::vector<tExternalConfigValue> aCustomCVarConfig;
-	std::vector<tExternalConfigValue> aCustomAdvancedConfig;
-	std::vector<tExternalConfigValue>* GetCustomConfig(int category) {
-		std::vector<FreemanAPI::tExternalConfigValue>* vec = nullptr;
+	std::vector<tConfigValue> aCustomBehaviorConfig;
+	std::vector<tConfigValue> aCustomCVarConfig;
+	std::vector<tConfigValue> aCustomAdvancedConfig;
+	std::vector<tConfigValue>* GetCustomConfig(int category) {
+		std::vector<tConfigValue>* vec = nullptr;
 		switch (category) {
 			case 0:
 			default:
-				vec = &FreemanAPI::aCustomBehaviorConfig;
+				vec = &aCustomBehaviorConfig;
 				break;
 			case 1:
-				vec = &FreemanAPI::aCustomCVarConfig;
+				vec = &aCustomCVarConfig;
 				break;
 			case 2:
-				vec = &FreemanAPI::aCustomAdvancedConfig;
+				vec = &aCustomAdvancedConfig;
 				break;
 		}
 		return vec;
 	}
-	void AddBoolToCustomConfig(std::vector<FreemanAPI::tExternalConfigValue>* vec, const char* label, const char* configLabel, bool* ptr) {
+	void AddBoolToCustomConfig(std::vector<tConfigValue>* vec, const char* label, const char* configLabel, bool* ptr) {
 		if (!vec) return;
 		if (!label) return;
 		if (!ptr) return;
@@ -34,13 +27,13 @@ namespace FreemanAPI {
 		for (auto& value : *vec) {
 			if (value.bValue == ptr) return;
 		}
-		FreemanAPI::tExternalConfigValue value;
+		tConfigValue value;
 		value.name = label;
 		if (configLabel) value.configName = configLabel;
 		value.bValue = ptr;
 		vec->push_back(value);
 	}
-	void AddIntToCustomConfig(std::vector<FreemanAPI::tExternalConfigValue>* vec, const char* label, const char* configLabel, int* ptr) {
+	void AddIntToCustomConfig(std::vector<tConfigValue>* vec, const char* label, const char* configLabel, int* ptr) {
 		if (!vec) return;
 		if (!label) return;
 		if (!ptr) return;
@@ -48,13 +41,13 @@ namespace FreemanAPI {
 		for (auto& value : *vec) {
 			if (value.iValue == ptr) return;
 		}
-		FreemanAPI::tExternalConfigValue value;
+		tConfigValue value;
 		value.name = label;
 		if (configLabel) value.configName = configLabel;
 		value.iValue = ptr;
 		vec->push_back(value);
 	}
-	void AddFloatToCustomConfig(std::vector<FreemanAPI::tExternalConfigValue>* vec, const char* label, const char* configLabel, float* ptr) {
+	void AddFloatToCustomConfig(std::vector<tConfigValue>* vec, const char* label, const char* configLabel, float* ptr) {
 		if (!vec) return;
 		if (!label) return;
 		if (!ptr) return;
@@ -62,11 +55,33 @@ namespace FreemanAPI {
 		for (auto& value : *vec) {
 			if (value.fValue == ptr) return;
 		}
-		FreemanAPI::tExternalConfigValue value;
+		tConfigValue value;
 		value.name = label;
 		if (configLabel) value.configName = configLabel;
 		value.fValue = ptr;
 		vec->push_back(value);
+	}
+	tConfigValue* FindConfigValue(const char* label) {
+		if (!label) return nullptr;
+		for (auto& config : aBehaviorConfig) {
+			if (config.name == label) return &config;
+		}
+		for (auto& config : aCustomBehaviorConfig) {
+			if (config.name == label) return &config;
+		}
+		for (auto& config : aAdvancedConfig) {
+			if (config.name == label) return &config;
+		}
+		for (auto& config : aCustomAdvancedConfig) {
+			if (config.name == label) return &config;
+		}
+		for (auto& config : aCVarConfig) {
+			if (config.name == label) return &config;
+		}
+		for (auto& config : aCustomCVarConfig) {
+			if (config.name == label) return &config;
+		}
+		return nullptr;
 	}
 
 	auto EXT_PlayGameSound = (void(*)(const char*, float))nullptr;
@@ -88,9 +103,6 @@ namespace FreemanAPI {
 	auto EXT_GetGameMoveDuck = (bool(*)())nullptr;
 	auto EXT_GetGameMoveRun = (bool(*)())nullptr;
 	auto EXT_GetGameMoveUse = (bool(*)())nullptr;
-	auto EXT_fov = (float*)nullptr;
-	auto EXT_sensitivity = (float*)nullptr;
-	auto EXT_volume = (float*)nullptr;
 
 	void PlayGameSound(const std::string& path, float volume) {
 		if (!EXT_PlayGameSound) return;

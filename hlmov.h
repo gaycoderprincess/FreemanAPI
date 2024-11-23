@@ -1,6 +1,6 @@
+#include "hl_config.h"
 #include "hl_cvars.h"
 #include "include/hl_consts.h"
-#include "hl_config.h"
 #include "hl_types.h"
 #include "hl_math.h"
 #include "hl_game_ext.h"
@@ -2225,58 +2225,51 @@ namespace FreemanAPI {
 		ApplyMoveParams();
 	}
 
-	void ValueEditorMenu(float& value) {
-		ChloeMenuLib::BeginMenu();
-
-		static char inputString[1024] = {};
-		ChloeMenuLib::AddTextInputToString(inputString, 1024, true);
-		ChloeMenuLib::SetEnterHint("Apply");
-
-		if (DrawMenuOption(inputString + (std::string)"...", "", false, false) && inputString[0]) {
-			value = std::stof(inputString);
-			memset(inputString,0,sizeof(inputString));
-			ChloeMenuLib::BackOut();
+	void FillConfig() {
+		if (aBehaviorConfig.empty()) {
+			AddBoolToCustomConfig(&aBehaviorConfig, "Enabled", "enabled", &bEnabled);
+			AddBoolToCustomConfig(&aBehaviorConfig, "ABH", "abh", &bABH);
+			AddBoolToCustomConfig(&aBehaviorConfig, "Mixed ABH", "abh_mixed", &bABHMixed);
+			AddBoolToCustomConfig(&aBehaviorConfig, "Long Jump Module", "longjump", &bCanLongJump);
+			AddBoolToCustomConfig(&aBehaviorConfig, "Bhop Speed Cap", "bhop_cap", &bBhopCap);
+			AddBoolToCustomConfig(&aBehaviorConfig, "Better sv_maxvelocity", "better_maxvelocity", &bSmartVelocityCap);
+			AddBoolToCustomConfig(&aBehaviorConfig, "Noclip Key", "noclip_toggle", &bNoclipKey);
 		}
-
-		ChloeMenuLib::EndMenu();
-	}
-
-	void ValueEditorMenu(int& value) {
-		ChloeMenuLib::BeginMenu();
-
-		static char inputString[1024] = {};
-		ChloeMenuLib::AddTextInputToString(inputString, 1024, true);
-		ChloeMenuLib::SetEnterHint("Apply");
-
-		if (DrawMenuOption(inputString + (std::string)"...", "", false, false) && inputString[0]) {
-			value = std::stoi(inputString);
-			memset(inputString,0,sizeof(inputString));
-			ChloeMenuLib::BackOut();
+		if (aAdvancedConfig.empty()) {
+			AddIntToCustomConfig(&aAdvancedConfig, "Collision Density", "collision_density", &nColDensity);
+			AddIntToCustomConfig(&aAdvancedConfig, "Physics Steps", "physics_steps", &nPhysicsSteps);
 		}
-
-		ChloeMenuLib::EndMenu();
-	}
-
-	void ValueEditorMenu(bool& value, const std::string& name) {
-		if (DrawMenuOption(std::format("{} - {}", name, value), "")) {
-			value = !value;
-		}
-	}
-
-	void ValueEditorMenu(float& value, const std::string& name) {
-		if (DrawMenuOption(std::format("{} - {}", name, value), "")) {
-			ValueEditorMenu(value);
+		if (aCVarConfig.empty()) {
+			AddFloatToCustomConfig(&aCVarConfig, "cl_bob", "cl_bob", &cl_bob);
+			AddFloatToCustomConfig(&aCVarConfig, "cl_bobcycle", "cl_bobcycle", &cl_bobcycle);
+			AddFloatToCustomConfig(&aCVarConfig, "cl_bobup", "cl_bobup", &cl_bobup);
+			AddFloatToCustomConfig(&aCVarConfig, "cl_forwardspeed", "cl_forwardspeed", &cl_forwardspeed);
+			AddFloatToCustomConfig(&aCVarConfig, "cl_sidespeed", "cl_sidespeed", &cl_sidespeed);
+			AddFloatToCustomConfig(&aCVarConfig, "cl_upspeed", "cl_upspeed", &cl_upspeed);
+			AddFloatToCustomConfig(&aCVarConfig, "cl_movespeedkey", "cl_movespeedkey", &cl_movespeedkey);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_gravity", "sv_gravity", &sv_gravity);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_stopspeed", "sv_stopspeed", &sv_stopspeed);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_maxspeed", "sv_maxspeed", &sv_maxspeed);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_noclipspeed", "sv_noclipspeed", &sv_noclipspeed);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_accelerate", "sv_accelerate", &sv_accelerate);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_airaccelerate", "sv_airaccelerate", &sv_airaccelerate);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_wateraccelerate", "sv_wateraccelerate", &sv_wateraccelerate);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_friction", "sv_friction", &sv_friction);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_edgefriction", "sv_edgefriction", &sv_edgefriction);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_waterfriction", "sv_waterfriction", &sv_waterfriction);
+			//AddFloatToCustomConfig(&aCVarConfig, "sv_entgravity", "sv_entgravity", &sv_entgravity);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_bounce", "sv_bounce", &sv_bounce);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_stepsize", "sv_stepsize", &sv_stepsize);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_maxvelocity", "sv_maxvelocity", &sv_maxvelocity);
+			//AddBoolToCustomConfig(&aCVarConfig, "mp_footsteps", "mp_footsteps", &mp_footsteps);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_rollangle", "sv_rollangle", &sv_rollangle);
+			AddFloatToCustomConfig(&aCVarConfig, "sv_rollspeed", "sv_rollspeed", &sv_rollspeed);
 		}
 	}
-
-	void ValueEditorMenu(int& value, const std::string& name) {
-		if (DrawMenuOption(std::format("{} - {}", name, value), "")) {
-			ValueEditorMenu(value);
-		}
-	}
-
 
 	void ProcessMenu() {
+		if (aBehaviorConfig.empty()) FillConfig();
+
 		if (DrawMenuOption(std::format("Active - {}", bEnabled), "")) {
 			bEnabled = !bEnabled;
 			if (bEnabled) Reset();
@@ -2285,28 +2278,20 @@ namespace FreemanAPI {
 		if (DrawMenuOption("Behavior", "Adjust the movement physics")) {
 			ChloeMenuLib::BeginMenu();
 
-			ValueEditorMenu(bAutoHop, "Auto Hop");
-			ValueEditorMenu(bABH, "ABH");
-			ValueEditorMenu(bABHMixed, "Mixed ABH");
-			ValueEditorMenu(bCanLongJump, "Long Jump Module");
-			ValueEditorMenu(bBhopCap, "Bhop Speed Cap");
-			ValueEditorMenu(bSmartVelocityCap, "Better sv_maxvelocity");
-			ValueEditorMenu(bNoclipKey, "Noclip Key");
-
+			for (auto& value : aBehaviorConfig) {
+				value.DrawValueEditor();
+			}
 			for (auto& value : aCustomBehaviorConfig) {
-				if (value.bValue) ValueEditorMenu(*value.bValue, value.name);
-				if (value.iValue) ValueEditorMenu(*value.iValue, value.name);
-				if (value.fValue) ValueEditorMenu(*value.fValue, value.name);
+				value.DrawValueEditor();
 			}
 
 			if (DrawMenuOption("Advanced")) {
 				ChloeMenuLib::BeginMenu();
-				ValueEditorMenu(nColDensity, "Collision Density");
-				ValueEditorMenu(nPhysicsSteps, "Physics Steps");
+				for (auto& value : aAdvancedConfig) {
+					value.DrawValueEditor();
+				}
 				for (auto& value : aCustomAdvancedConfig) {
-					if (value.bValue) ValueEditorMenu(*value.bValue, value.name);
-					if (value.iValue) ValueEditorMenu(*value.iValue, value.name);
-					if (value.fValue) ValueEditorMenu(*value.fValue, value.name);
+					value.DrawValueEditor();
 				}
 				ChloeMenuLib::EndMenu();
 			}
@@ -2316,38 +2301,11 @@ namespace FreemanAPI {
 		if (DrawMenuOption("Parameters", "Adjust console variables")) {
 			ChloeMenuLib::BeginMenu();
 
-			if (EXT_fov) ValueEditorMenu(*EXT_fov, "fov_desired");
-			if (EXT_sensitivity) ValueEditorMenu(*EXT_sensitivity, "sensitivity");
-			if (EXT_volume) ValueEditorMenu(*EXT_volume, "volume");
-			ValueEditorMenu(sv_gravity, "sv_gravity");
-			ValueEditorMenu(sv_stopspeed, "sv_stopspeed");
-			ValueEditorMenu(sv_maxspeed, "sv_maxspeed");
-			ValueEditorMenu(sv_noclipspeed, "sv_noclipspeed");
-			ValueEditorMenu(sv_accelerate, "sv_accelerate");
-			ValueEditorMenu(sv_airaccelerate, "sv_airaccelerate");
-			ValueEditorMenu(sv_wateraccelerate, "sv_wateraccelerate");
-			ValueEditorMenu(sv_friction, "sv_friction");
-			ValueEditorMenu(sv_edgefriction, "sv_edgefriction");
-			ValueEditorMenu(sv_waterfriction, "sv_waterfriction");
-			//ValueEditorMenu(sv_entgravity, "sv_entgravity");
-			ValueEditorMenu(sv_bounce, "sv_bounce");
-			ValueEditorMenu(sv_stepsize, "sv_stepsize");
-			ValueEditorMenu(sv_maxvelocity, "sv_maxvelocity");
-			//ValueEditorMenu(mp_footsteps, "mp_footsteps");
-			ValueEditorMenu(sv_rollangle, "sv_rollangle");
-			ValueEditorMenu(sv_rollspeed, "sv_rollspeed");
-			ValueEditorMenu(cl_forwardspeed, "cl_forwardspeed");
-			ValueEditorMenu(cl_sidespeed, "cl_sidespeed");
-			ValueEditorMenu(cl_upspeed, "cl_upspeed");
-			ValueEditorMenu(cl_movespeedkey, "cl_movespeedkey");
-			ValueEditorMenu(cl_bob, "cl_bob");
-			ValueEditorMenu(cl_bobcycle, "cl_bobcycle");
-			ValueEditorMenu(cl_bobup, "cl_bobup");
-
+			for (auto& value : aCVarConfig) {
+				value.DrawValueEditor();
+			}
 			for (auto& value : aCustomCVarConfig) {
-				if (value.bValue) ValueEditorMenu(*value.bValue, value.name);
-				if (value.iValue) ValueEditorMenu(*value.iValue, value.name);
-				if (value.fValue) ValueEditorMenu(*value.fValue, value.name);
+				value.DrawValueEditor();
 			}
 
 			ChloeMenuLib::EndMenu();
@@ -2368,70 +2326,27 @@ namespace FreemanAPI {
 	std::string sConfigName = "FreemanAPI_gcp.toml";
 
 	void LoadConfig() {
+		if (aBehaviorConfig.empty()) FillConfig();
+
 		auto config = toml::parse_file(sConfigName);
 
+		for (auto& value : aBehaviorConfig) {
+			value.ReadFromConfig(config, "game");
+		}
 		for (auto& value : aCustomBehaviorConfig) {
-			if (value.configName.empty()) continue;
-
-			if (value.bValue) *value.bValue = config["game"][value.configName].value_or(*value.bValue);
-			if (value.iValue) *value.iValue = config["game"][value.configName].value_or(*value.iValue);
-			if (value.fValue) *value.fValue = config["game"][value.configName].value_or(*value.fValue);
+			value.ReadFromConfig(config, "game");
 		}
-
-		bEnabled = config["main"]["enabled"].value_or(bEnabled);
-		bCanLongJump = config["main"]["longjump"].value_or(bCanLongJump);
-		bAutoHop = config["main"]["autohop"].value_or(bAutoHop);
-		bABH = config["main"]["abh"].value_or(bABH);
-		bABHMixed = config["main"]["abh_mixed"].value_or(bABHMixed);
-		bBhopCap = config["main"]["bhop_cap"].value_or(bBhopCap);
-		bSmartVelocityCap = config["main"]["better_maxvelocity"].value_or(bSmartVelocityCap);
-		bNoclipKey = config["main"]["noclip_toggle"].value_or(bNoclipKey);
-
+		for (auto& value : aAdvancedConfig) {
+			value.ReadFromConfig(config, "advanced");
+		}
 		for (auto& value : aCustomAdvancedConfig) {
-			if (value.configName.empty()) continue;
-
-			if (value.bValue) *value.bValue = config["advanced"][value.configName].value_or(*value.bValue);
-			if (value.iValue) *value.iValue = config["advanced"][value.configName].value_or(*value.iValue);
-			if (value.fValue) *value.fValue = config["advanced"][value.configName].value_or(*value.fValue);
+			value.ReadFromConfig(config, "advanced");
 		}
-
-		nPhysicsSteps = config["advanced"]["physics_steps"].value_or(nPhysicsSteps);
-		nColDensity = config["advanced"]["collision_density"].value_or(nColDensity);
-
+		for (auto& value : aCVarConfig) {
+			value.ReadFromConfig(config, "cvars");
+		}
 		for (auto& value : aCustomCVarConfig) {
-			if (value.configName.empty()) continue;
-
-			if (value.bValue) *value.bValue = config["cvars"][value.configName].value_or(*value.bValue);
-			if (value.iValue) *value.iValue = config["cvars"][value.configName].value_or(*value.iValue);
-			if (value.fValue) *value.fValue = config["cvars"][value.configName].value_or(*value.fValue);
+			value.ReadFromConfig(config, "cvars");
 		}
-
-		if (EXT_fov) *EXT_fov = config["cvars"]["fov_desired"].value_or(*EXT_fov);
-		if (EXT_sensitivity) *EXT_sensitivity = config["cvars"]["sensitivity"].value_or(*EXT_sensitivity);
-		if (EXT_volume) *EXT_volume = config["cvars"]["volume"].value_or(*EXT_volume);
-		cl_bob = config["cvars"]["cl_bob"].value_or(cl_bob);
-		cl_bobcycle = config["cvars"]["cl_bobcycle"].value_or(cl_bobcycle);
-		cl_bobup = config["cvars"]["cl_bobup"].value_or(cl_bobup);
-		cl_forwardspeed = config["cvars"]["cl_forwardspeed"].value_or(cl_forwardspeed);
-		cl_sidespeed = config["cvars"]["cl_sidespeed"].value_or(cl_sidespeed);
-		cl_upspeed = config["cvars"]["cl_upspeed"].value_or(cl_upspeed);
-		cl_movespeedkey = config["cvars"]["cl_movespeedkey"].value_or(cl_movespeedkey);
-		sv_gravity = config["cvars"]["sv_gravity"].value_or(sv_gravity);
-		sv_stopspeed = config["cvars"]["sv_stopspeed"].value_or(sv_stopspeed);
-		sv_maxspeed = config["cvars"]["sv_maxspeed"].value_or(sv_maxspeed);
-		sv_noclipspeed = config["cvars"]["sv_noclipspeed"].value_or(sv_noclipspeed);
-		sv_accelerate = config["cvars"]["sv_accelerate"].value_or(sv_accelerate);
-		sv_airaccelerate = config["cvars"]["sv_airaccelerate"].value_or(sv_airaccelerate);
-		sv_wateraccelerate = config["cvars"]["sv_wateraccelerate"].value_or(sv_wateraccelerate);
-		sv_friction = config["cvars"]["sv_friction"].value_or(sv_friction);
-		sv_edgefriction = config["cvars"]["sv_edgefriction"].value_or(sv_edgefriction);
-		sv_waterfriction = config["cvars"]["sv_waterfriction"].value_or(sv_waterfriction);
-		//sv_entgravity = config["cvars"]["sv_entgravity"].value_or(sv_entgravity);
-		sv_bounce = config["cvars"]["sv_bounce"].value_or(sv_bounce);
-		sv_stepsize = config["cvars"]["sv_stepsize"].value_or(sv_stepsize);
-		sv_maxvelocity = config["cvars"]["sv_maxvelocity"].value_or(sv_maxvelocity);
-		//mp_footsteps = config["cvars"]["mp_footsteps"].value_or(mp_footsteps);
-		sv_rollangle = config["cvars"]["sv_rollangle"].value_or(sv_rollangle);
-		sv_rollspeed = config["cvars"]["sv_rollspeed"].value_or(sv_rollspeed);
 	}
 }
