@@ -1,6 +1,6 @@
 # FreemanAPI
 
-An easy-to-use API to implement movement from the original Half-Life into other games.
+An easy-to-use API to implement movement from the original Half-Life and Half-Life 2 into other games.
 
 https://github.com/user-attachments/assets/78839a5b-210d-4ad9-b17e-0b074bc6ae14
 
