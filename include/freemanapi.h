@@ -178,6 +178,12 @@ namespace FreemanAPI {
 		funcPtr(value);
 	}
 
+	void GetRotateOrder(int* pitch, int* yaw, int* roll) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(int*, int*, int*)>("FreemanAPI_GetRotateOrder");
+		if (!funcPtr) return;
+		funcPtr(pitch, yaw, roll);
+	}
+
 	void SetRotateOrder(int pitch, int yaw, int roll) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(int, int, int)>("FreemanAPI_SetRotateOrder");
 		if (!funcPtr) return;
@@ -210,6 +216,12 @@ namespace FreemanAPI {
 
 	void SetMoveType(int type) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(int)>("FreemanAPI_SetMoveType");
+		if (!funcPtr) return;
+		funcPtr(type);
+	}
+
+	void SetDefaultMoveType(int type) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(int)>("FreemanAPI_SetDefaultMoveType");
 		if (!funcPtr) return;
 		funcPtr(type);
 	}

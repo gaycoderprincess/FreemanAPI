@@ -70,6 +70,11 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetIsZUp(bool on) {
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetConvertUnits(bool on) {
 	FreemanAPI::bConvertUnits = on;
 }
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_GetRotateOrder(int* pitch, int* yaw, int* roll) {
+	if (pitch) *pitch = FreemanAPI::PITCH;
+	if (yaw) *yaw = FreemanAPI::YAW;
+	if (roll) *roll = FreemanAPI::ROLL;
+}
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetRotateOrder(int pitch, int yaw, int roll) {
 	if (pitch >= 0 && pitch <= 2) FreemanAPI::PITCH = pitch;
 	if (yaw >= 0 && yaw <= 2) FreemanAPI::YAW = yaw;
@@ -95,6 +100,9 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_ToggleNoclip() {
 }
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetMoveType(int type) {
 	FreemanAPI::pmove->movetype = type;
+}
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetDefaultMoveType(int type) {
+	FreemanAPI::nDefaultMoveType = type;
 }
 extern "C" __declspec(dllexport) bool __cdecl FreemanAPI_GetIsEnabled() {
 	return FreemanAPI::bEnabled;

@@ -6,6 +6,8 @@
 #include "hl_game_ext.h"
 
 namespace FreemanAPI {
+	int nDefaultMoveType = MOVETYPE_WALK;
+
 	pmtrace_t PointRaytrace(NyaVec3Double origin, NyaVec3Double end) {
 		if (bConvertUnits) {
 			for (int i = 0; i < 3; i++) {
@@ -2164,7 +2166,7 @@ namespace FreemanAPI {
 		pmove->basevelocity = {0,0,0};
 		pmove->movedir = {0,0,0};
 		pmove->onground = -1;
-		pmove->movetype = MOVETYPE_WALK;
+		pmove->movetype = nDefaultMoveType;
 		pmove->usehull = 0;
 		pmove->view_ofs[0] = 0;
 		pmove->view_ofs[FORWARD] = 0;
@@ -2185,7 +2187,6 @@ namespace FreemanAPI {
 		pmove->oldbuttons = 0;
 		pmove->waterjumptime = 0;
 		pmove->dead = false;
-		pmove->movetype = MOVETYPE_WALK;
 		pmove->onground = -1;
 		pmove->waterlevel = 0;
 		pmove->oldwaterlevel = 0;
