@@ -133,3 +133,11 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetConfigName(const cha
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_LoadConfig() {
 	FreemanAPI::LoadConfig();
 }
+extern "C" __declspec(dllexport) float __cdecl FreemanAPI_GetPlayerVelocity() {
+	return FreemanAPI::pmove->velocity.length();
+}
+extern "C" __declspec(dllexport) float __cdecl FreemanAPI_GetPlayerVelocity2D() {
+	auto vel = FreemanAPI::pmove->velocity;
+	vel[FreemanAPI::UP] = 0;
+	return vel.length();
+}

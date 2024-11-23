@@ -289,4 +289,16 @@ namespace FreemanAPI {
 		if (!funcPtr) return;
 		return funcPtr();
 	}
+
+	float GetPlayerVelocity() {
+		static auto funcPtr = GetFuncPtr<float(__cdecl*)()>("FreemanAPI_GetPlayerVelocity");
+		if (!funcPtr) return 0;
+		return funcPtr();
+	}
+
+	float GetPlayerVelocity2D() {
+		static auto funcPtr = GetFuncPtr<float(__cdecl*)()>("FreemanAPI_GetPlayerVelocity2D");
+		if (!funcPtr) return 0;
+		return funcPtr();
+	}
 }
