@@ -30,6 +30,7 @@ namespace FreemanAPI {
 		//float HL2_WALK_SPEED = 150;
 		float HL2_NORM_SPEED = 190;
 		float HL2_SPRINT_SPEED	= 320;
+		float GAMEMOVEMENT_JUMP_HEIGHT = 21.0f; // units
 	}
 	namespace CVar_HL1 {
 		float cl_bob = 0.01;

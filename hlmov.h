@@ -1187,10 +1187,11 @@ namespace FreemanAPI {
 			return;
 		}
 
-		if (pmove->flags & FL_DUCKING) {
+		if (!(pmove->m_iSpeedCropped & SPEED_CROPPED_DUCK) && pmove->flags & FL_DUCKING) {
 			pmove->cmd.forwardmove *= PLAYER_DUCKING_MULTIPLIER;
 			pmove->cmd.sidemove *= PLAYER_DUCKING_MULTIPLIER;
 			pmove->cmd.upmove *= PLAYER_DUCKING_MULTIPLIER;
+			pmove->m_iSpeedCropped |= SPEED_CROPPED_DUCK;
 		}
 
 		if ((pmove->cmd.buttons & IN_DUCK) || pmove->bInDuckHL1 || (pmove->flags & FL_DUCKING)) {
@@ -2475,7 +2476,7 @@ namespace FreemanAPI {
 			//  up for uncrouching
 			NyaVec3Double hullSizeNormal = VEC_HULL_MAX_SCALED() - VEC_HULL_MIN_SCALED();
 			NyaVec3Double hullSizeCrouch = VEC_DUCK_HULL_MAX_SCALED() - VEC_DUCK_HULL_MIN_SCALED();
-			NyaVec3Double viewDelta = ( hullSizeNormal - hullSizeCrouch );
+			NyaVec3Double viewDelta = (hullSizeNormal - hullSizeCrouch);
 			viewDelta *= -1;
 			VectorAdd(newOrigin, viewDelta, newOrigin);
 		}
@@ -2483,13 +2484,17 @@ namespace FreemanAPI {
 		bool saveducked = pmove->m_bDucked;
 		pmove->m_bDucked = false;
 		if (IsUsingPlayerTraceFallback()) {
-			trace = GetClosestBBoxIntersection(pmove->origin, newOrigin);
+			trace = GetBottomCeilingForBBox(newOrigin);
+			trace.startsolid = trace.ent != -1;
 		}
+		//if (IsUsingPlayerTraceFallback()) {
+		//	trace = GetClosestBBoxIntersection(pmove->origin, newOrigin);
+		//}
 		else {
 			trace = PM_PlayerTrace(pmove->origin, newOrigin);
 		}
 		pmove->m_bDucked = saveducked;
-		if (trace.startsolid || (trace.fraction != 1.0f))
+		if (trace.startsolid || (!IsUsingPlayerTraceFallback() && trace.fraction != 1.0f))
 			return false;
 
 		return true;
@@ -2706,18 +2711,12 @@ namespace FreemanAPI {
 		//	flGroundFactor = player->m_pSurfaceData->game.jumpFactor;
 		//}
 
-		float flMul = std::sqrt(2 * CVar_HL2::sv_gravity * GAMEMOVEMENT_JUMP_HEIGHT);
+		float flMul = std::sqrt(2 * CVar_HL2::sv_gravity * CVar_HL2::GAMEMOVEMENT_JUMP_HEIGHT);
 
 		// Acclerate upward
 		// If we are ducking...
 		float startz = pmove->velocity[UP];
 		if ((pmove->m_bDucking) || (pmove->flags & FL_DUCKING)) {
-			// d = 0.5 * g * t^2		- distance traveled with linear accel
-			// t = sqrt(2.0 * 45 / g)	- how long to fall 45 units
-			// v = g * t				- velocity at the end (just invert it to jump up that high)
-			// v = g * sqrt(2.0 * 45 / g )
-			// v^2 = g * g * 2.0 * 45 / g
-			// v = sqrt( g * 2.0 * 45 )
 			pmove->velocity[UP] = flGroundFactor * flMul;  // 2 * gravity * height
 		}
 		else {
@@ -3593,6 +3592,7 @@ namespace FreemanAPI {
 			AddFloatToCustomConfig(&aCVarConfigHL2, "sv_rollspeed", "sv_rollspeed", &CVar_HL2::sv_rollspeed);
 			AddFloatToCustomConfig(&aCVarConfigHL2, "HL2_NORM_SPEED", "HL2_NORM_SPEED", &CVar_HL2::HL2_NORM_SPEED);
 			AddFloatToCustomConfig(&aCVarConfigHL2, "HL2_SPRINT_SPEED", "HL2_SPRINT_SPEED", &CVar_HL2::HL2_SPRINT_SPEED);
+			AddFloatToCustomConfig(&aCVarConfigHL2, "GAMEMOVEMENT_JUMP_HEIGHT", "GAMEMOVEMENT_JUMP_HEIGHT", &CVar_HL2::GAMEMOVEMENT_JUMP_HEIGHT);
 		}
 	}
 
