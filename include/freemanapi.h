@@ -168,6 +168,12 @@ namespace FreemanAPI {
 		funcPtr(func);
 	}
 
+	void Register_OnTakeFallDamage(void(*func)(float)) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(void(*func)(float))>("FreemanAPI_Register_OnTakeFallDamage");
+		if (!funcPtr) return;
+		funcPtr(func);
+	}
+
 	void SetIsZUp(bool value) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(bool)>("FreemanAPI_SetIsZUp");
 		if (!funcPtr) return;

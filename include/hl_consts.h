@@ -13,11 +13,11 @@ namespace FreemanAPI {
 	const int VEC_DUCK_HULL_MAX				= 18;
 	const int VEC_DUCK_VIEW_HL1				= 12;
 	const int PM_DEAD_VIEWHEIGHT			= -8;
-	const int PLAYER_FATAL_FALL_SPEED		= 1024;	// approx 60 feet
-	const int PLAYER_MAX_SAFE_FALL_SPEED	= 580;	// approx 20 feet
-	const float DAMAGE_FOR_FALL_SPEED		= (float)100 / (PLAYER_FATAL_FALL_SPEED - PLAYER_MAX_SAFE_FALL_SPEED); // damage per unit per second.
-	const int PLAYER_MIN_BOUNCE_SPEED		= 200;
-	const int PLAYER_FALL_PUNCH_THRESHHOLD	= 350;	// won't punch player's screen/make scrape noise unless player falling at least this fast.
+	const int PLAYER_FATAL_FALL_SPEED_HL1	= 1024;	// approx 60 feet
+	const int PLAYER_MAX_SAFE_FALL_SPEED_HL1= 580;	// approx 20 feet
+	const float DAMAGE_FOR_FALL_SPEED_HL1	= (float)100 / (PLAYER_FATAL_FALL_SPEED_HL1 - PLAYER_MAX_SAFE_FALL_SPEED_HL1); // damage per unit per second.
+	const int PLAYER_MIN_BOUNCE_SPEED_HL1	= 200;
+	const int PLAYER_FALL_PUNCH_THRESHOLD_HL1= 350;	// won't punch player's screen/make scrape noise unless player falling at least this fast.
 	const int PLAYER_LONGJUMP_SPEED			= 350;	// how fast we longjump
 	const float PLAYER_DUCKING_MULTIPLIER 	= 0.333;
 	const float	STOP_EPSILON				= 0.1;
@@ -40,6 +40,7 @@ namespace FreemanAPI {
 	const float PLAYER_LAND_ON_FLOATING_OBJECT_HL2	= 173; // Can fall another 173 in/sec without getting hurt
 	const float PLAYER_MIN_BOUNCE_SPEED_HL2			= 173;
 	const float PLAYER_FALL_PUNCH_THRESHOLD_HL2		= 303.0f; // // won't punch player's screen/make scrape noise unless player falling at least this fast - at least a 76" fall (sqrt( 2 * g * 76))
+	const float DAMAGE_FOR_FALL_SPEED_HL2			= 100.0f / (PLAYER_FATAL_FALL_SPEED_HL2 - PLAYER_MAX_SAFE_FALL_SPEED_HL2); // damage per unit per second.
 	const float NON_JUMP_VELOCITY 					= 140.0f; // NOTE: 145 is a jump.
 	const float PUNCH_DAMPING						= 9.0f;		// bigger number makes the response more damped, smaller is less damped
 																// currently the system will overshoot, with larger damping values it won't

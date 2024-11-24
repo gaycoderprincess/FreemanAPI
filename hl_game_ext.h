@@ -117,6 +117,12 @@ namespace FreemanAPI {
 	auto EXT_GetGameMoveDuck = (bool(*)())nullptr;
 	auto EXT_GetGameMoveRun = (bool(*)())nullptr;
 	auto EXT_GetGameMoveUse = (bool(*)())nullptr;
+	auto EXT_OnTakeFallDamage = (void(*)(float))nullptr;
+
+	void OnTakeFallDamage(float dmg) {
+		if (!EXT_OnTakeFallDamage) return;
+		EXT_OnTakeFallDamage(dmg);
+	}
 
 	void PlayGameSound(const std::string& path, float volume) {
 		if (!EXT_PlayGameSound) return;

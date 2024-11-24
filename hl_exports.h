@@ -55,6 +55,9 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_GetGameMoveRun
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_GetGameMoveUse(bool(*func)()) {
 	FreemanAPI::EXT_GetGameMoveUse = func;
 }
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_OnTakeFallDamage(void(*func)(float)) {
+	FreemanAPI::EXT_OnTakeFallDamage = func;
+}
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetIsZUp(bool on) {
 	if (on) {
 		NyaMat4x4::bZUp = true;
@@ -117,10 +120,10 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetIsHL2Mode(bool on) {
 	FreemanAPI::bHL2Mode = on;
 }
 extern "C" __declspec(dllexport) double* __cdecl FreemanAPI_GetPlayerBBoxMin() {
-	return &FreemanAPI::pmove->player_mins[FreemanAPI::pmove->usehull].x;
+	return &FreemanAPI::pmove->player_mins[FreemanAPI::GetPlayerHullID()].x;
 }
 extern "C" __declspec(dllexport) double* __cdecl FreemanAPI_GetPlayerBBoxMax() {
-	return &FreemanAPI::pmove->player_maxs[FreemanAPI::pmove->usehull].x;
+	return &FreemanAPI::pmove->player_maxs[FreemanAPI::GetPlayerHullID()].x;
 }
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_RegisterCustomBoolean(const char* label, const char* configLabel, bool* ptr, int category) {
 	FreemanAPI::AddBoolToCustomConfig(FreemanAPI::GetCustomConfig(category), label, configLabel, ptr);

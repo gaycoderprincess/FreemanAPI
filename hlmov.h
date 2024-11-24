@@ -7,6 +7,14 @@
 
 namespace FreemanAPI {
 	// HL2 helper funcs
+	int GetPlayerHullID() {
+		// hl2 should do this depending on the ducked var unless we're using point hull
+		if (bHL2Mode && pmove->usehull != 2) {
+			return pmove->m_bDucked ? 1 : 0;
+		}
+		return pmove->usehull;
+	}
+
 	bool IsDead() {
 		return pmove->dead;
 	}
@@ -418,19 +426,19 @@ namespace FreemanAPI {
 
 	// get avg between min and max up, should end up 0 for HL1
 	float GetPlayerCenterUp() {
-		auto min = pmove->player_mins[pmove->usehull];
-		auto max = pmove->player_maxs[pmove->usehull];
+		auto min = pmove->player_mins[GetPlayerHullID()];
+		auto max = pmove->player_maxs[GetPlayerHullID()];
 		return (min[UP] + max[UP]) * 0.5;
 	}
 
 	NyaVec3Double GetCenterRelativeBBoxMin() {
-		auto v = pmove->player_mins[pmove->usehull];
+		auto v = pmove->player_mins[GetPlayerHullID()];
 		v[UP] -= GetPlayerCenterUp();
 		return v;
 	}
 
 	NyaVec3Double GetCenterRelativeBBoxMax() {
-		auto v = pmove->player_maxs[pmove->usehull];
+		auto v = pmove->player_maxs[GetPlayerHullID()];
 		v[UP] -= GetPlayerCenterUp();
 		return v;
 	}
@@ -572,9 +580,9 @@ namespace FreemanAPI {
 		float heightover2;
 
 		// Pick a spot just above the players feet.
-		point[0] = pmove->origin[0] + (pmove->player_mins[pmove->usehull][0] + pmove->player_maxs[pmove->usehull][0]) * 0.5;
-		point[FORWARD] = pmove->origin[FORWARD] + (pmove->player_mins[pmove->usehull][FORWARD] + pmove->player_maxs[pmove->usehull][FORWARD]) * 0.5;
-		point[UP] = pmove->origin[UP] + pmove->player_mins[pmove->usehull][UP] + 1;
+		point[0] = pmove->origin[0] + (pmove->player_mins[GetPlayerHullID()][0] + pmove->player_maxs[GetPlayerHullID()][0]) * 0.5;
+		point[FORWARD] = pmove->origin[FORWARD] + (pmove->player_mins[GetPlayerHullID()][FORWARD] + pmove->player_maxs[GetPlayerHullID()][FORWARD]) * 0.5;
+		point[UP] = pmove->origin[UP] + pmove->player_mins[GetPlayerHullID()][UP] + 1;
 
 		// Assume that we are not in water at all.
 		pmove->waterlevel = 0;
@@ -590,7 +598,7 @@ namespace FreemanAPI {
 			// We are at least at level one
 			pmove->waterlevel = 1;
 
-			height = (pmove->player_mins[pmove->usehull][UP] + pmove->player_maxs[pmove->usehull][UP]);
+			height = (pmove->player_mins[GetPlayerHullID()][UP] + pmove->player_maxs[GetPlayerHullID()][UP]);
 			heightover2 = height * 0.5;
 
 			// Now check a point that is at the player hull midpoint.
@@ -1030,7 +1038,7 @@ namespace FreemanAPI {
 			VectorCopy(pmove->origin, knee);
 			VectorCopy(pmove->origin, feet);
 
-			height = pmove->player_maxs[pmove->usehull][UP] - pmove->player_mins[pmove->usehull][UP];
+			height = pmove->player_maxs[GetPlayerHullID()][UP] - pmove->player_mins[GetPlayerHullID()][UP];
 
 			knee[UP] = pmove->origin[UP] - 0.3 * height;
 			feet[UP] = pmove->origin[UP] - 0.5 * height;
@@ -1356,7 +1364,7 @@ namespace FreemanAPI {
 
 			start[0] = stop[0] = pmove->origin[0] + vel[0]/speed*16;
 			start[FORWARD] = stop[FORWARD] = pmove->origin[FORWARD] + vel[FORWARD]/speed*16;
-			start[UP] = pmove->origin[UP] + pmove->player_mins[pmove->usehull][UP];
+			start[UP] = pmove->origin[UP] + pmove->player_mins[GetPlayerHullID()][UP];
 			stop[UP] = start[UP] - 34;
 
 			if (IsUsingPlayerTraceFallback()) {
@@ -1655,10 +1663,10 @@ namespace FreemanAPI {
 			velocity2d[UP] = 0;
 
 			float fLateralStoppingAmount = primal_velocity_2d.length() - velocity2d.length();
-			if (fLateralStoppingAmount > PLAYER_MAX_SAFE_FALL_SPEED * 2.0f) {
+			if (fLateralStoppingAmount > PLAYER_MAX_SAFE_FALL_SPEED_HL2 * 2.0f) {
 				fSlamVol = 1.0f;
 			}
-			else if (fLateralStoppingAmount > PLAYER_MAX_SAFE_FALL_SPEED) {
+			else if (fLateralStoppingAmount > PLAYER_MAX_SAFE_FALL_SPEED_HL2) {
 				fSlamVol = 0.85f;
 			}
 
@@ -2208,29 +2216,23 @@ namespace FreemanAPI {
 	}
 
 	void PM_CheckFalling() {
-		if (pmove->onground != -1 && !pmove->dead && pmove->flFallVelocity >= PLAYER_FALL_PUNCH_THRESHHOLD) {
+		if (pmove->onground != -1 && !pmove->dead && pmove->flFallVelocity >= PLAYER_FALL_PUNCH_THRESHOLD_HL1) {
 			float fvol = 0.5;
 
 			if (pmove->waterlevel > 0) {
 
 			}
-			else if (pmove->flFallVelocity > PLAYER_MAX_SAFE_FALL_SPEED) {
-				// NOTE:  In the original game dll , there were no breaks after these cases, causing the first one to
-				// cascade into the second
-				//switch (rand() % 2) {
-				//case 0:
-				//PlayGameSound("player/pl_fallpain2.wav", 1);
-				//break;
-				//case 1:
+			else if (pmove->flFallVelocity > PLAYER_MAX_SAFE_FALL_SPEED_HL1) {
+				OnTakeFallDamage(pmove->flFallVelocity * DAMAGE_FOR_FALL_SPEED_HL1);
+
 				PlayGameSound("player/pl_fallpain3.wav", 1);
-				//break;
-				//}
+
 				fvol = 1.0;
 			}
-			else if (pmove->flFallVelocity > PLAYER_MAX_SAFE_FALL_SPEED / 2) {
+			else if (pmove->flFallVelocity > PLAYER_MAX_SAFE_FALL_SPEED_HL1 / 2) {
 				fvol = 0.85;
 			}
-			else if (pmove->flFallVelocity < PLAYER_MIN_BOUNCE_SPEED) {
+			else if (pmove->flFallVelocity < PLAYER_MIN_BOUNCE_SPEED_HL1) {
 				fvol = 0;
 			}
 
@@ -2801,17 +2803,13 @@ namespace FreemanAPI {
 				//}
 
 				if (pmove->flFallVelocity > PLAYER_MAX_SAFE_FALL_SPEED_HL2) {
-					//
-					// If they hit the ground going this fast they may take damage (and die).
-					//
-					//bAlive = MoveHelper( )->PlayerFallingDamage();
-					
 					// subtract off the speed at which a player is allowed to fall without being hurt,
 					// so damage will be based on speed beyond that, not the entire fall
 
 					// NOTE: this line introduces a bug with fall punch calculation in original HL2 but is part of CSingleplayRules::FlPlayerFallDamage
 					// keeping it here to stay authentic
-					pmove->flFallVelocity -= PLAYER_MAX_SAFE_FALL_SPEED;
+					pmove->flFallVelocity -= PLAYER_MAX_SAFE_FALL_SPEED_HL2;
+					OnTakeFallDamage(pmove->flFallVelocity * DAMAGE_FOR_FALL_SPEED_HL2);
 					
 					switch (rand() % 2) {
 						case 0:
@@ -3238,6 +3236,7 @@ namespace FreemanAPI {
 
 		auto origin = pmove->origin;
 		auto velocity = pmove->velocity;
+		origin[UP] += GetPlayerCenterUp();
 		if (bConvertUnits) {
 			for (int i = 0; i < 3; i++) {
 				eye[i] = UnitsToMeters(eye[i]);
@@ -3285,6 +3284,7 @@ namespace FreemanAPI {
 			}
 		}
 		pmove->origin = gamePlayer;
+		pmove->origin[UP] -= GetPlayerCenterUp();
 		pmove->velocity = gameVelocity;
 
 		pmove->angles = {0,0,0};
@@ -3309,7 +3309,6 @@ namespace FreemanAPI {
 		pmove->flFallVelocity = 0;
 		pmove->flSwimTime = 0;
 		pmove->flags = 0;
-		pmove->usehull = 0;
 		pmove->gravity = 1;
 		pmove->friction = 1;
 		pmove->oldbuttons = 0;
@@ -3335,7 +3334,7 @@ namespace FreemanAPI {
 		pmove->m_flDuckJumpTime = 0;
 		pmove->m_flJumpTime = 0;
 		pmove->m_iSpeedCropped = 0;
-		pmove->m_bIsSprinting = 0;
+		pmove->m_bIsSprinting = false;
 		pmove->m_bAllowAutoMovement = true;
 		pmove->m_vecPunchAngleVel = {0,0,0};
 		SetPlayerBBoxes();
@@ -3346,13 +3345,34 @@ namespace FreemanAPI {
 		pmove->movetype = pmove->movetype == MOVETYPE_NOCLIP ? MOVETYPE_WALK : MOVETYPE_NOCLIP;
 	}
 
+	void ResetForHL2Swap() {
+		// reset ducking and view offset if hl2 mode was swapped
+		pmove->flDuckTime = 0;
+		pmove->bInDuckHL1 = false;
+		pmove->flags &= ~FL_DUCKING;
+		pmove->m_bDucked = false;
+		pmove->m_bDucking = false;
+		pmove->m_bInDuckJump = false;
+		pmove->m_flDuckJumpTime = 0;
+		pmove->m_flJumpTime = 0;
+		pmove->m_iSpeedCropped = 0;
+		pmove->m_bIsSprinting = false;
+		pmove->m_bAllowAutoMovement = true;
+		pmove->m_vecPunchAngleVel = {0,0,0};
+		pmove->view_ofs[0] = 0;
+		pmove->view_ofs[FORWARD] = 0;
+		pmove->view_ofs[UP] = VEC_VIEW();
+
+		// add origin offset for different bbox center
+		pmove->origin[UP] += GetPlayerCenterUp();
+		SetPlayerBBoxes();
+		pmove->origin[UP] -= GetPlayerCenterUp();
+	}
+
 	void Process(double delta) {
-		// reset view offset if hl2 mode was swapped
 		static bool bLastHL2 = bHL2Mode;
 		if (bLastHL2 != bHL2Mode) {
-			pmove->view_ofs[0] = 0;
-			pmove->view_ofs[FORWARD] = 0;
-			pmove->view_ofs[UP] = VEC_VIEW();
+			ResetForHL2Swap();
 		}
 		bLastHL2 = bHL2Mode;
 
