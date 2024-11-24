@@ -2916,6 +2916,132 @@ namespace FreemanAPI {
 		}
 	}
 
+	void PM_AddGravity() {
+		float ent_gravity = pmove->gravity ? pmove->gravity : 1.0;
+
+		// Add gravity incorrectly
+		pmove->velocity[UP] -= ent_gravity * movevars->gravity * pmove->frametime;
+		pmove->velocity[UP] += pmove->basevelocity[UP] * pmove->frametime;
+		pmove->basevelocity[UP] = 0;
+		PM_CheckVelocity();
+	}
+
+	pmtrace_t PM_PushEntity(NyaVec3Double push) {
+		pmtrace_t trace;
+		NyaVec3Double end;
+
+		VectorAdd(pmove->origin, push, end);
+
+		if (IsUsingPlayerTraceFallback()) {
+			trace = GetClosestBBoxIntersection(pmove->origin, end);
+		}
+		else {
+			trace = PM_PlayerTrace(pmove->origin, end);
+		}
+
+		VectorCopy(trace.endpos, pmove->origin);
+
+		// todo
+		// So we can run impact function afterwards.
+		//if (trace.fraction < 1.0 && !trace.allsolid) {
+		//	PM_AddToTouched(trace, pmove->velocity);
+		//}
+
+		return trace;
+	}
+
+	void PM_Physics_Toss() {
+		pmtrace_t trace;
+		NyaVec3Double move;
+		float backoff;
+
+		PM_CheckWater();
+
+		if (pmove->velocity[UP] > 0) {
+			pmove->onground = -1;
+		}
+
+		// If on ground and not moving, return.
+		if (pmove->onground != -1) {
+			if (pmove->basevelocity.length() <= 0.0 && pmove->velocity.length() <= 0.0) {
+				return;
+			}
+		}
+
+		PM_CheckVelocity();
+
+		// add gravity
+		if (pmove->movetype != MOVETYPE_FLY && pmove->movetype != MOVETYPE_BOUNCEMISSILE && pmove->movetype != MOVETYPE_FLYMISSILE) {
+			PM_AddGravity();
+		}
+
+		// move origin
+		// Base velocity is not properly accounted for since this entity will move again after the bounce without
+		// taking it into account
+		VectorAdd(pmove->velocity, pmove->basevelocity, pmove->velocity);
+
+		PM_CheckVelocity();
+		VectorScale(pmove->velocity, pmove->frametime, move);
+		VectorSubtract(pmove->velocity, pmove->basevelocity, pmove->velocity);
+
+		trace = PM_PushEntity(move);	// Should this clear basevelocity
+
+		PM_CheckVelocity();
+
+		if (trace.allsolid) {
+			// entity is trapped in another solid
+			pmove->onground = trace.ent;
+			VectorCopy(vec3_origin, pmove->velocity);
+			return;
+		}
+
+		if (trace.fraction == 1.0f) {
+			PM_CheckWater();
+			return;
+		}
+
+
+		if (pmove->movetype == MOVETYPE_BOUNCE) {
+			backoff = 2.0 - pmove->friction;
+		}
+		else if (pmove->movetype == MOVETYPE_BOUNCEMISSILE) {
+			backoff = 2.0;
+		}
+		else {
+			backoff = 1;
+		}
+
+		PM_ClipVelocity(pmove->velocity, trace.plane.normal, pmove->velocity, backoff);
+
+		// stop if on ground
+		if (trace.plane.normal[UP] > 0.7) {
+			float vel;
+			NyaVec3Double base;
+
+			VectorClear(base);
+			if (pmove->velocity[UP] < movevars->gravity * pmove->frametime) {
+				// we're rolling on the ground, add static friction.
+				pmove->onground = trace.ent;
+				pmove->velocity[UP] = 0;
+			}
+
+			vel = DotProduct(pmove->velocity, pmove->velocity);
+
+			if (vel < (30 * 30) || (pmove->movetype != MOVETYPE_BOUNCE && pmove->movetype != MOVETYPE_BOUNCEMISSILE)) {
+				pmove->onground = trace.ent;
+				VectorCopy(vec3_origin, pmove->velocity);
+			}
+			else {
+				VectorScale(pmove->velocity, (1.0 - trace.fraction) * pmove->frametime * 0.9, move);
+				trace = PM_PushEntity(move);
+			}
+			VectorSubtract(pmove->velocity, base, pmove->velocity);
+		}
+
+		// check for in water
+		PM_CheckWater();
+	}
+
 	void PM_PlayerMove(double delta) {
 		physent_t *pLadder = nullptr;
 
@@ -3006,10 +3132,10 @@ namespace FreemanAPI {
 				}
 				break;
 
-			//case MOVETYPE_TOSS:
-			//case MOVETYPE_BOUNCE:
-			//	PM_Physics_Toss();
-			//	break;
+			case MOVETYPE_TOSS:
+			case MOVETYPE_BOUNCE:
+				PM_Physics_Toss();
+				break;
 
 			case MOVETYPE_FLY:
 				PM_CheckWater();
@@ -3105,6 +3231,14 @@ namespace FreemanAPI {
 					// Are we on ground now
 					if (pmove->onground != -1) {
 						PM_WalkMove();
+
+						// basic col check to get us unstuck due to point raytrace inaccuracy
+						if (IsUsingPlayerTraceFallback()) {
+							auto collide = GetClosestBBoxIntersection(pmove->origin, pmove->origin);
+							if (collide.ent != -1) {
+								pmove->origin = collide.endpos;
+							}
+						}
 					} else {
 						PM_AirMove();  // Take into account movement when in air.
 					}
