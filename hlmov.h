@@ -2487,9 +2487,6 @@ namespace FreemanAPI {
 			trace = GetBottomCeilingForBBox(newOrigin);
 			trace.startsolid = trace.ent != -1;
 		}
-		//if (IsUsingPlayerTraceFallback()) {
-		//	trace = GetClosestBBoxIntersection(pmove->origin, newOrigin);
-		//}
 		else {
 			trace = PM_PlayerTrace(pmove->origin, newOrigin);
 		}
@@ -3331,6 +3328,8 @@ namespace FreemanAPI {
 		float sidespeed = bHL2Mode ? CVar_HL2::cl_sidespeed : CVar_HL1::cl_sidespeed;
 		float upspeed = bHL2Mode ? CVar_HL2::cl_upspeed : CVar_HL1::cl_upspeed;
 
+		static bool bLastSprinting = false;
+
 		if (EXT_GetGameMoveLeftRight) pmove->cmd.sidemove += sidespeed * EXT_GetGameMoveLeftRight();
 		if (EXT_GetGameMoveFwdBack) pmove->cmd.forwardmove += forwardspeed * EXT_GetGameMoveFwdBack();
 		if (EXT_GetGameMoveUpDown) pmove->cmd.upmove += upspeed * EXT_GetGameMoveUpDown();
@@ -3343,9 +3342,9 @@ namespace FreemanAPI {
 					pmove->m_bIsSprinting = true;
 					pmove->cmd.buttons |= IN_SPEED;
 					pmove->maxspeed = CVar_HL2::HL2_SPRINT_SPEED;
-					if (!(pmove->oldbuttons & IN_SPEED)) {
-						PlayGameSound("player/suit_sprint.wav", 1);
-					}
+				}
+				if (!bLastSprinting) {
+					PlayGameSound("player/suit_sprint.wav", 1);
 				}
 			}
 			else {
@@ -3353,6 +3352,10 @@ namespace FreemanAPI {
 				pmove->cmd.forwardmove *= CVar_HL1::cl_movespeedkey;
 				pmove->cmd.sidemove *= CVar_HL1::cl_movespeedkey;
 			}
+			bLastSprinting = true;
+		}
+		else {
+			bLastSprinting = false;
 		}
 
 		if (pmove->cmd.buttons & IN_SPEED) {
