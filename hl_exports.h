@@ -73,6 +73,14 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetIsZUp(bool on) {
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetConvertUnits(bool on) {
 	FreemanAPI::bConvertUnits = on;
 }
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetUnitSize(float f) {
+	FreemanAPI::fUnitsConversion = f;
+}
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_SetUnitInvertXYZ(bool x, bool y, bool z) {
+	FreemanAPI::vXYZUnitsMult.x = x ? -1 : 1;
+	FreemanAPI::vXYZUnitsMult.y = y ? -1 : 1;
+	FreemanAPI::vXYZUnitsMult.z = z ? -1 : 1;
+}
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_GetRotateOrder(int* pitch, int* yaw, int* roll) {
 	if (pitch) *pitch = FreemanAPI::PITCH;
 	if (yaw) *yaw = FreemanAPI::YAW;

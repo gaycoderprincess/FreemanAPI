@@ -186,6 +186,18 @@ namespace FreemanAPI {
 		funcPtr(value);
 	}
 
+	void SetUnitSize(float value) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(float)>("FreemanAPI_SetUnitSize");
+		if (!funcPtr) return;
+		funcPtr(value);
+	}
+
+	void SetUnitInvertXYZ(bool x, bool y, bool z) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(bool, bool, bool)>("FreemanAPI_SetUnitInvertXYZ");
+		if (!funcPtr) return;
+		funcPtr(x, y, z);
+	}
+
 	void GetRotateOrder(int* pitch, int* yaw, int* roll) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(int*, int*, int*)>("FreemanAPI_GetRotateOrder");
 		if (!funcPtr) return;

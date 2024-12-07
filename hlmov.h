@@ -76,6 +76,8 @@ namespace FreemanAPI {
 				origin[i] = UnitsToMeters(origin[i]);
 				end[i] = UnitsToMeters(end[i]);
 			}
+			origin *= vXYZUnitsMult;
+			end *= vXYZUnitsMult;
 		}
 		auto trace = PointRaytraceGame(&origin, &end);
 		if (bConvertUnits) {
@@ -83,6 +85,8 @@ namespace FreemanAPI {
 				trace->endpos[i] = MetersToUnits(trace->endpos[i]);
 				trace->plane.dist = MetersToUnits(trace->plane.dist);
 			}
+			trace->endpos *= vXYZUnitsMult;
+			trace->plane.normal *= vXYZUnitsMult;
 		}
 		return *trace;
 	}
@@ -93,6 +97,8 @@ namespace FreemanAPI {
 				origin[i] = UnitsToMeters(origin[i]);
 				end[i] = UnitsToMeters(end[i]);
 			}
+			origin *= vXYZUnitsMult;
+			end *= vXYZUnitsMult;
 		}
 		auto trace = PM_PlayerTraceGame(&origin, &end);
 		if (bConvertUnits) {
@@ -100,6 +106,8 @@ namespace FreemanAPI {
 				trace->endpos[i] = MetersToUnits(trace->endpos[i]);
 				trace->plane.dist = MetersToUnits(trace->plane.dist);
 			}
+			trace->endpos *= vXYZUnitsMult;
+			trace->plane.normal *= vXYZUnitsMult;
 		}
 		return *trace;
 	}
@@ -110,6 +118,8 @@ namespace FreemanAPI {
 				origin[i] = UnitsToMeters(origin[i]);
 				end[i] = UnitsToMeters(end[i]);
 			}
+			origin *= vXYZUnitsMult;
+			end *= vXYZUnitsMult;
 		}
 		auto trace = PM_PlayerTraceDownGame(&origin, &end);
 		if (bConvertUnits) {
@@ -117,6 +127,8 @@ namespace FreemanAPI {
 				trace->endpos[i] = MetersToUnits(trace->endpos[i]);
 				trace->plane.dist = MetersToUnits(trace->plane.dist);
 			}
+			trace->endpos *= vXYZUnitsMult;
+			trace->plane.normal *= vXYZUnitsMult;
 		}
 		return *trace;
 	}
@@ -3379,6 +3391,9 @@ namespace FreemanAPI {
 				origin[i] = UnitsToMeters(origin[i]);
 				velocity[i] = UnitsToMeters(velocity[i]);
 			}
+			eye *= vXYZUnitsMult;
+			origin *= vXYZUnitsMult;
+			velocity *= vXYZUnitsMult;
 		}
 
 		SetGamePlayerPosition(&origin, &velocity);
@@ -3418,6 +3433,8 @@ namespace FreemanAPI {
 				gamePlayer[i] = MetersToUnits(gamePlayer[i]);
 				gameVelocity[i] = MetersToUnits(gameVelocity[i]);
 			}
+			gamePlayer *= vXYZUnitsMult;
+			gameVelocity *= vXYZUnitsMult;
 		}
 		pmove->origin = gamePlayer;
 		pmove->origin[UP] -= GetPlayerCenterUp();

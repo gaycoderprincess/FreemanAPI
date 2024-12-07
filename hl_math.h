@@ -1,11 +1,14 @@
 // HL math and unit conversions
 namespace FreemanAPI {
+	double fUnitsConversion = 0.0254;
+	NyaVec3Double vXYZUnitsMult;
+
 	inline double UnitsToMeters(double f) {
-		return f * 0.0254;
+		return f * fUnitsConversion;
 	}
 
 	inline double MetersToUnits(double f) {
-		return f / 0.0254;
+		return f / fUnitsConversion;
 	}
 
 	inline double DotProduct(const NyaVec3Double& x, const NyaVec3Double& y) {
