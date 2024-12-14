@@ -1,7 +1,7 @@
 // HL math and unit conversions
 namespace FreemanAPI {
 	double fUnitsConversion = 0.0254;
-	NyaVec3Double vXYZUnitsMult;
+	NyaVec3Double vXYZUnitsMult = {1,1,1};
 
 	inline double UnitsToMeters(double f) {
 		return f * fUnitsConversion;

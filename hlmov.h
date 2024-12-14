@@ -3679,7 +3679,7 @@ namespace FreemanAPI {
 			DrawMenuOption(std::format("View Angle - {:.2f} {:.2f} {:.2f}", pmove->angles[0], pmove->angles[1], pmove->angles[2]));
 			DrawMenuOption(std::format("Last Plane Normal - {:.2f}", fLastPlaneNormal));
 			DrawMenuOption(std::format("On Ground - {}", pmove->onground));
-			DrawMenuOption(std::format("{}", lastConsoleMsg));
+			DrawMenuOption(lastConsoleMsg);
 			ChloeMenuLib::EndMenu();
 		}
 	}
