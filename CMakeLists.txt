@@ -14,9 +14,8 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -masm=intel -s -static")
 
 #add_compile_definitions(NYA_COMMON_NO_D3D FREEMANAPI_FOUC_MENULIB)
 add_compile_definitions(NYA_COMMON_NO_D3D)
-add_library(FreemanAPI SHARED
-        ../nya-common/nya_commontimer.cpp
-        main.cpp)
+
+add_library(FreemanAPI SHARED main.cpp)
 target_include_directories(FreemanAPI PUBLIC ../nya-common)
 target_include_directories(FreemanAPI PUBLIC ../nya-common/3rdparty)
 target_include_directories(FreemanAPI PUBLIC ../FlatOutUCMenuLib/include)
