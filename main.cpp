@@ -7,7 +7,9 @@
 
 #include "nya_commonmath.h"
 
+#ifdef FREEMANAPI_FOUC_MENULIB
 #include "chloemenulib.h"
+#endif
 
 #include "hlmov.h"
 #include "hl_exports.h"

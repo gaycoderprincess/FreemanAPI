@@ -100,9 +100,11 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Process(double delta) {
 
 	FreemanAPI::Process(delta);
 }
+#ifdef FREEMANAPI_FOUC_MENULIB
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_ProcessChloeMenu() {
 	FreemanAPI::ProcessMenu();
 }
+#endif
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_ResetPhysics() {
 	FreemanAPI::Reset();
 }

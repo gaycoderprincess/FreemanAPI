@@ -1,5 +1,6 @@
 // custom config
 namespace FreemanAPI {
+#ifdef FREEMANAPI_FOUC_MENULIB
 	void ValueEditorMenu(float& value) {
 		ChloeMenuLib::BeginMenu();
 
@@ -49,6 +50,7 @@ namespace FreemanAPI {
 			ValueEditorMenu(value);
 		}
 	}
+#endif
 
 	struct tConfigValue {
 		bool* bValue = nullptr;
@@ -65,6 +67,7 @@ namespace FreemanAPI {
 			if (fValue) *fValue = config[label][configName].value_or(*fValue);
 		}
 
+#ifdef FREEMANAPI_FOUC_MENULIB
 		void DrawValueEditor() const {
 			if (name.empty()) return;
 
@@ -72,6 +75,7 @@ namespace FreemanAPI {
 			if (iValue) ValueEditorMenu(*iValue, name);
 			if (fValue) ValueEditorMenu(*fValue, name);
 		}
+#endif
 	};
 	std::vector<tConfigValue> aBehaviorConfig;
 	std::vector<tConfigValue> aCVarConfigHL1;

@@ -3616,6 +3616,7 @@ namespace FreemanAPI {
 		}
 	}
 
+#ifdef FREEMANAPI_FOUC_MENULIB
 	void ProcessMenu() {
 		if (aBehaviorConfig.empty()) FillConfig();
 
@@ -3683,6 +3684,7 @@ namespace FreemanAPI {
 			ChloeMenuLib::EndMenu();
 		}
 	}
+#endif
 
 	std::string sConfigName = "FreemanAPI_gcp.toml";
 
