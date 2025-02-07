@@ -84,6 +84,12 @@ namespace FreemanAPI {
 		funcPtr(func);
 	}
 
+	void Register_SetGamePlayerPositionRaw(void(*func)(const double*, const double*)) {
+		static auto funcPtr = GetFuncPtr<void(__cdecl*)(void(*func)(const double*, const double*))>("FreemanAPI_Register_SetGamePlayerPositionRaw");
+		if (!funcPtr) return;
+		funcPtr(func);
+	}
+
 	void Register_SetGamePlayerViewPosition(void(*func)(const double*)) {
 		static auto funcPtr = GetFuncPtr<void(__cdecl*)(void(*func)(const double*))>("FreemanAPI_Register_SetGamePlayerViewPosition");
 		if (!funcPtr) return;

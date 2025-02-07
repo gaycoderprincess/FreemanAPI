@@ -16,6 +16,9 @@ extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_GetGamePlayerV
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_SetGamePlayerPosition(void(*func)(const double*, const double*)) {
 	FreemanAPI::EXT_SetGamePlayerPosition = func;
 }
+extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_SetGamePlayerPositionRaw(void(*func)(const double*, const double*)) {
+	FreemanAPI::EXT_SetGamePlayerPositionRaw = func;
+}
 extern "C" __declspec(dllexport) void __cdecl FreemanAPI_Register_SetGamePlayerViewPosition(void(*func)(const double*)) {
 	FreemanAPI::EXT_SetGamePlayerViewPosition = func;
 }

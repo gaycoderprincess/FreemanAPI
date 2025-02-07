@@ -104,6 +104,7 @@ namespace FreemanAPI {
 	auto EXT_GetGamePlayerVelocity = (void(*)(double*))nullptr;
 	auto EXT_GetGamePlayerViewAngle = (void(*)(double*))nullptr;
 	auto EXT_SetGamePlayerPosition = (void(*)(const double*, const double*))nullptr;
+	auto EXT_SetGamePlayerPositionRaw = (void(*)(const double*, const double*))nullptr;
 	auto EXT_SetGamePlayerViewPosition = (void(*)(const double*))nullptr;
 	auto EXT_SetGamePlayerViewAngle = (void(*)(const double*))nullptr;
 	auto EXT_GetPointContents = (int(*)(const double*))nullptr;
@@ -158,6 +159,11 @@ namespace FreemanAPI {
 	void SetGamePlayerPosition(const NyaVec3Double* in, const NyaVec3Double* inVelocity) {
 		if (!EXT_SetGamePlayerPosition) return;
 		EXT_SetGamePlayerPosition(&in->x, &inVelocity->x);
+	}
+
+	void SetGamePlayerPositionRaw(const NyaVec3Double* in, const NyaVec3Double* inVelocity) {
+		if (!EXT_SetGamePlayerPositionRaw) return;
+		EXT_SetGamePlayerPositionRaw(&in->x, &inVelocity->x);
 	}
 
 	void SetGamePlayerViewPosition(const NyaVec3Double* in) {

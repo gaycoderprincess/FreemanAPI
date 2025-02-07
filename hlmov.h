@@ -3383,20 +3383,27 @@ namespace FreemanAPI {
 		eye[UP] += V_CalcBob();
 
 		auto origin = pmove->origin;
+		auto originRaw = origin;
 		auto velocity = pmove->velocity;
 		origin[UP] += GetPlayerCenterUp();
+		//if (bHL2Mode && pmove->onground == -1) {
+		//	originRaw[UP] -= GetPlayerCenterUp();
+		//}
 		if (bConvertUnits) {
 			for (int i = 0; i < 3; i++) {
 				eye[i] = UnitsToMeters(eye[i]);
 				origin[i] = UnitsToMeters(origin[i]);
+				originRaw[i] = UnitsToMeters(originRaw[i]);
 				velocity[i] = UnitsToMeters(velocity[i]);
 			}
 			eye *= vXYZUnitsMult;
 			origin *= vXYZUnitsMult;
+			originRaw *= vXYZUnitsMult;
 			velocity *= vXYZUnitsMult;
 		}
 
 		SetGamePlayerPosition(&origin, &velocity);
+		SetGamePlayerPositionRaw(&originRaw, &velocity);
 		SetGamePlayerViewPosition(&eye);
 		SetGamePlayerViewAngle(&pmove->angles);
 	}
@@ -3690,6 +3697,8 @@ namespace FreemanAPI {
 
 	void LoadConfig() {
 		if (aBehaviorConfig.empty()) FillConfig();
+
+		if (!std::filesystem::exists(sConfigName)) return;
 
 		auto config = toml::parse_file(sConfigName);
 		for (auto& value : aBehaviorConfig) {
