@@ -12,6 +12,6 @@ All original code is MPL 2.0 licensed, all Valve code is subject to the Source S
 
 Building is done on an Arch Linux system with CLion being used for the build process. 
 
-Before you begin, clone [nya-common](https://github.com/gaycoderprincess/nya-common) and [FlatOutUCMenuLib](https://github.com/gaycoderprincess/FlatOutUCMenuLib) to folders next to this one, so they can be found.
+Before you begin, clone [nya-common](https://github.com/gaycoderprincess/nya-common) and [CwoeeMenuLib](https://github.com/gaycoderprincess/CwoeeMenuLib) to folders next to this one, so they can be found.
 
 You should be able to build the project now in CLion.
